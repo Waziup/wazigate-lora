@@ -14,8 +14,8 @@ import (
 	"net/http"
     "github.com/Waziup/wazigate-lora/SX127X"
     "github.com/Waziup/wazigate-lora/SX1301"
+    "github.com/Waziup/wazigate-lora/lora"
     "github.com/Waziup/wazigate-rpi/gpio"
-	"github.com/Waziup/wazigate-rpi/spi"
 	"github.com/Waziup/wazigate-edge/mqtt"
 )
 
@@ -23,81 +23,53 @@ const EdgeOrigin = "http://127.0.0.1:880"
 const ContentType = "application/json; charset=utf-8"
 const Radios = "sx127x,sx1272,sx1276,sx1301"
 
-var radio Radio
-
 var queue = make(chan *mqtt.Message, 8)
+var offline = false
 
-func sx1301() error {
+func sx1301() bool {
 	pinRst, err := gpio.Output(17)
 	if err != nil {
-        return err
+        return false
 	}
 	sx := SX1301.New(pinRst)
 	err = sx.On()
+	log.Println("[     ] Chip SX1301 detected.")
 	if err != nil {
-		return err
+		return false
 	}
 	defer sx.Off()
 	for true {
 		pkts, err := sx.Receive()
 		if err != nil {
-			return err
+			return false
 		}
-		logger.Println(pkts)
+		if len(pkts) == 0 {
+			time.Sleep(200*time.Millisecond)
+			continue
+		}
+		logger.Printf("%#v", pkts)
 	}
-	return nil
+	return true
 }
 
-func sx127x() error {
-	dev, err := spi.Open("/dev/spidev0.1", 1000000)
-    dev.SetMode(0)
-    dev.SetBitsPerWord(8)
-    dev.SetLSBFirst(false)
-	dev.SetMaxSpeed(1000000)
-	defer dev.Close()
+func sx127x() bool {
+	SX127X.Logger = log.New(os.Stdout, "[LORA ] ", 0)
+	SX127X.LogLevel = SX127X.LogLevelNormal
 
-    if err != nil {
-        return err
-	}
-	
-	// SlaveSelect GPIO Pin
-	pinSS, err := gpio.Output(8)
+	radio, err := SX127X.Discover()
 	if err != nil {
-		return err
+		logger.Printf("Err: looking for SX127X: %v", err)
+		return false
 	}
-	defer pinSS.Unexport()
+	logger.Printf("Detected radio: %s", radio.Name())
+	logger.Printf("Receiving, please stand by...")
+	err = serveRadio(radio)
+	logger.Printf("Err: SX127X stopped serving: %v", err)
+	return true
+}
 
-	// Reset GIOP Pin
-	pinRst, err := gpio.Output(4)
-	if err != nil {
-		return err
-	}
-	defer pinRst.Unexport()
-
-	// SX127X instance
-	sx := SX127X.New(dev, pinSS, pinRst) 
-
-	// Log
-	sx.Logger.SetOutput(os.Stdout)
-	sx.Logger.SetPrefix("[LORA ] ")
-	sx.LogLevel = SX127X.LogLevelNormal
-	
-	// Startup ...
-	if err = sx.On(); err != nil {
-		return err
-	}
-	if err = sx.SetMode(1); err != nil {
-		return err
-	}
-	if err = sx.SetChannel(SX127X.CH_10_868); err != nil {
-		return err
-	}
-	if err = sx.SetPowerDBM(14); err != nil {
-		return err
-	}
-
-	var counter byte = 0
-
+func serveRadio(radio lora.Radio) error {
+	var counter byte
 	for true {
 
 		if len(queue) != 0 {
@@ -118,7 +90,15 @@ func sx127x() error {
 				data = append(data, '/')
 				data = append(data, msg.Data...)
 
-				if err := sx.Send(data); err != nil {
+				if err := radio.Send(&lora.TxPacket{
+					Modulation: "LORA",
+					Power: 14,
+					LoRaBW: 7, // BW_125
+					LoRaCR: 1, // CR_5
+					LoRaSF: 12, // SF_12
+					Freq: 0xD84CCC, // CH_10_868
+					Data: data,
+				}); err != nil {
 					logger.Printf("Err: %v", err)
 				} else {
 					log.Printf("[<<   ] %v", data)
@@ -126,21 +106,19 @@ func sx127x() error {
 				counter++
 			}
 		}
-
-		data, err := sx.ReceiveAll(SX127X.MAX_TIMEOUT)
-		switch err {
-		case nil:
-			
-			rssi, _ := sx.GetRSSIpacket();
-			log.Printf("[>>   ] %v (rssi: %d)", data, rssi)
-
-			if (len(data) > 6 && data[4] == '\\' && data[5] == '!') {
-				dest := data[0]
-				typ := data[1]
-				src := data[2]
-				num := data[3]
-				logger.Printf("Dest: %d, Typ: %d, Src: %d, Num: %d, Data: %q, RSSI: %d", dest, typ, src, num, data[6:], rssi)
-				err = PostData(int(src), data[6:])
+		pkts, err := radio.Receive()
+		if err != nil {
+			return err
+		}
+		for _, pkt := range pkts {
+			log.Printf("[>>   ] %v (rssi: %d)", pkt.Data, pkt.RSSI)
+			if (len(pkt.Data) > 6 && pkt.Data[4] == '\\' && pkt.Data[5] == '!') {
+				dest := pkt.Data[0]
+				typ := pkt.Data[1]
+				src := pkt.Data[2]
+				num := pkt.Data[3]
+				logger.Printf("Dest: %d, Typ: %d, Src: %d, Num: %d, Data: %q, RSSI: %d", dest, typ, src, num, pkt.Data[6:], pkt.RSSI)
+				err = PostData(int(src), pkt.Data[6:])
 				if err != nil {
 					logger.Printf("Err: can not save data: %v", err)
 				}
@@ -150,12 +128,6 @@ func sx127x() error {
 				// MHDR: MType | RFU | Major
 				logger.Printf("Err: unknown receive format")
 			}
-		case SX127X.ErrTimeout:
-		case SX127X.ErrIncorrectCRC:
-			logger.Printf("Err: faulty package: incorrect CRC")
-		default:
-			// unknown error
-			return err
 		}
 	}
 	return nil // unreachable
@@ -167,39 +139,53 @@ func main() {
 	log.SetFlags(0)
 	logger = log.New(os.Stdout, "[     ] ", 0)
 
-	id, err := GetLocalID()
-	if err != nil {
-		logger.Printf("Err: can not connect to local edge service: %v", err)
-	} else {
-		logger.Printf("Edge ID: %q", id)
-	}
-	id = ""
-	err = nil
-
-	go downstream()
-
 	radios := Radios
-	if len(os.Args) > 1 {
-		radios = strings.ToLower(os.Args[1])
-		if !strings.Contains(radios, "sx127x") && !strings.Contains(radios, "sx1301") {
-			logger.Fatalf("Invalid argument: Use %q.", Radios)
+	for i := 1; i<len(os.Args); i++ {
+		arg := os.Args[i]
+		switch arg {
+		case "-r", "-radios":
+			i++
+			if i == len(os.Args) {
+				logger.Fatalf("Err: argument %q is missing its value", arg)
+			}
+			radios = strings.ToLower(os.Args[i])
+			if !strings.Contains(radios, "sx127x") && !strings.Contains(radios, "sx1301") {
+				logger.Fatalf("none of the radios match %q.", Radios)
+			}
+
+		case "-o", "-offline":
+			offline = true
+		default:
+			logger.Fatalf("Err: unrecognized argument: %q", arg)
 		}
 	}
 
+	if (!offline) {
+		id, err := GetLocalID()
+		if err != nil {
+			logger.Printf("Err: can not connect to local edge service: %v", err)
+		} else {
+			logger.Printf("Edge ID: %q", id)
+		}
+		id = ""
+		err = nil
+		go downstream()
+	}
+
+	logger.Println("Looking for connected radios...")
+
 	for true {
 		if strings.Contains(radios, "sx127x") {
-			logger.Println("Looking for SX127X...")
-			err := sx127x()
-			if err != nil {
-				logger.Printf("Err: SX127X: %v", err)
+			if sx127x() {
+				time.Sleep(time.Second/2)
+				continue
 			}
 			time.Sleep(time.Second/2)
 		}
 		if strings.Contains(radios, "sx1301") {
-			logger.Println("Looking for SX1301...")
-			sx1301()
-			if err != nil {
-				logger.Printf("Err: SX1301: %v", err)
+			if sx1301() {
+				time.Sleep(time.Second/2)
+				continue
 			}
 			time.Sleep(time.Second/2)
 		}

@@ -4,8 +4,10 @@ import (
     "fmt"
 	"log"
 	"time"
+	"errors"
     "github.com/Waziup/wazigate-rpi/gpio"
     "github.com/Waziup/wazigate-rpi/spi"
+    "github.com/Waziup/wazigate-lora/lora"
 )
 
 const (
@@ -38,7 +40,7 @@ type Chip struct {
 	defaultSyncWord byte
 	
 	LogLevel int
-	Logger log.Logger
+	Logger *log.Logger
 
 	mode int
 	syncWord byte
@@ -63,6 +65,9 @@ var logLevel = []string{
 	"[VERBO] ",
 	"[DEBUG] ",
 }
+
+var LogLevel = LogLevelNone
+var Logger *log.Logger
 
 func New(dev *spi.Device, pinSS gpio.Pin, pinRst gpio.Pin) *Chip {
 	return &Chip{
@@ -99,6 +104,53 @@ func (c *Chip) writeRegister(addr byte, data byte) (error) {
 	return err
 }
 
+func Discover() (lora.Radio, error) {
+
+	dev, err := spi.Open("/dev/spidev0.1", 1000000)
+    if err != nil {
+        return nil, err
+	}
+	dev.SetMode(0)
+    dev.SetBitsPerWord(8)
+    dev.SetLSBFirst(false)
+	dev.SetMaxSpeed(1000000)
+
+	
+	// SlaveSelect GPIO Pin
+	pinSS, err := gpio.Output(8)
+	if err != nil {
+		return nil, err
+	}
+
+	// Reset GIOP Pin
+	pinRst, err := gpio.Output(4)
+	if err != nil {
+		return nil, err
+	}
+
+	// SX127X instance
+	sx := New(dev, pinSS, pinRst)
+	sx.Logger = Logger
+	sx.LogLevel = LogLevel
+		
+	// Startup ...
+	if err = sx.On(); err != nil {
+		sx.Off()
+		return nil, err
+	}
+	return sx, nil;
+}
+
+func (c *Chip) Name() string {
+	switch c.version {
+	case VersionSX1272:
+		return "SX1272"
+	case VersionSX1276:
+		return "SX1276"
+	}
+	return ""
+}
+
 // On Sets the module ON.
 func (c *Chip) On() error {
 
@@ -117,12 +169,7 @@ func (c *Chip) On() error {
 		return err
 	}
 	c.version = version
-	switch version {
-	case VersionSX1272:
-		c.Log(LogLevelNormal, "Chip SX1272 detected (0x%x).", version)
-	case VersionSX1276:
-		c.Log(LogLevelNormal, "Chip SX1276 detected (0x%x).", version)
-	default:
+	if version != VersionSX1272 && version != VersionSX1276 {
 		return fmt.Errorf("unknown chip version: 0x%x", version)
 	}
 
@@ -271,10 +318,30 @@ func (c *Chip) On() error {
 
 	c.SetSyncWord(c.defaultSyncWord)
 
+	/*
+	if err := c.SetMode(1); err != nil {
+		return err
+	}
+	if err := c.SetChannel(CH_10_868); err != nil {
+		return err
+	}
+	if err := c.SetPowerDBM(14); err != nil {
+		return err
+	}
+
+	c.Logger.SetOutput(os.Stdout)
+	c.LogLevel = LogLevelDebug
+	for true {
+	 	data, err := c.ReceiveAll(10000)
+	 	log.Println(data, err)
+	}
+	*/
+
 	return nil
 }
 
 func (c *Chip) Off() error {
+	log.Println("off?")
 	c.dev.Close()
 	c.pinSS.Write(Low)
 	c.pinSS.Unexport()
@@ -458,6 +525,37 @@ func (c *Chip) SetLORA() error {
 	// FSK mode
     c.mode = ModemFSK;
     return fmt.Errorf("could not enable LoRa mode");
+}
+
+func (c *Chip) Receive() ([]*lora.RxPacket, error) {
+
+	if err := c.SetMode(1); err != nil {
+		return nil, err
+	}
+	if err := c.SetChannel(CH_10_868); err != nil {
+		return nil, err
+	}
+	if err := c.SetPowerDBM(14); err != nil {
+		return nil, err
+	}
+
+	data, err := c.ReceiveAll(10000)
+	if err != nil {
+		if err == ErrTimeout {
+			return nil, nil
+		}
+		return nil, err
+	}
+	if data == nil {
+		return nil, nil
+	}
+	rssi, _ := c.GetRSSIpacket()
+	return []*lora.RxPacket{
+		&lora.RxPacket{
+			RSSI: rssi,
+			Data: data,
+		},
+	}, nil
 }
 
 func (c *Chip) ReceiveAll(wait int) ([]byte, error) {
@@ -727,7 +825,7 @@ func (c *Chip) clearFlags() {
     }
 }
 
-func (c *Chip) SetMode(m int) error {
+func (c *Chip) SetMode(m int) (err error) {
 
 	c.Log(LogLevelDebug, "Change mode to %d ...", m)
 
@@ -735,9 +833,21 @@ func (c *Chip) SetMode(m int) error {
 		return fmt.Errorf("there is no mode %d", m)
 	}
 	mode := modes[m]
-	c.setCR(mode.cr)
-	c.setSF(mode.sf)
-	c.setBW(mode.bw)
+	if c.codingRate != mode.cr {
+		if err = c.setCR(mode.cr); err != nil {
+			return err
+		}
+	}
+	if c.spreadingFactor != mode.sf {
+		if err = c.setSF(mode.sf); err != nil {
+			return err
+		}
+	}
+	if c.bandwidth != mode.bw {
+		if err = c.setBW(mode.bw); err != nil {
+			return err
+		}
+	}
 	return nil
 }
 
@@ -1606,7 +1716,48 @@ func (c *Chip) isSF(spr byte) bool {
     }
 }
 
-func (c *Chip) Send(payload []byte) error {
+var errOnlyLora = errors.New("modulation must be \"LORA\"")
+
+func (c *Chip) Send(pkt *lora.TxPacket) (err error) {
+	switch pkt.Modulation {
+	case "LORA":
+		if c.mode != ModeLoRa {
+			if err = c.SetLORA(); err != nil {
+				return err
+			}
+		}
+	default:
+		return fmt.Errorf("unsupported mode: %q", pkt.Modulation)
+	}
+	if c.spreadingFactor != pkt.LoRaSF {
+		if !c.isSF(pkt.LoRaSF) {
+			return fmt.Errorf("invalid spreading factor: %v", pkt.LoRaSF)
+		}
+		if err = c.setSF(pkt.LoRaSF); err != nil {
+			return err
+		}
+	}
+	if c.bandwidth != pkt.LoRaBW {
+		if !c.isBW(pkt.LoRaBW) {
+			return fmt.Errorf("invalid bandwith: %v", pkt.LoRaBW)
+		}
+		if err = c.setBW(pkt.LoRaBW); err != nil {
+			return err
+		}
+	}
+	if c.codingRate != pkt.LoRaCR {
+		if !c.isCR(pkt.LoRaCR) {
+			return fmt.Errorf("invalid coding rate: %v", pkt.LoRaCR)
+		}
+		if err := c.setCR(pkt.LoRaCR); err != nil {
+			return err
+		}
+	}
+	
+	return c.sendPacketTimeout(pkt.Data, 10000)
+}
+
+func (c *Chip) send(payload []byte) error {
 	//c.setPacketType(PKT_TYPE_DATA | PKT_FLAG_DATA_DOWNLINK)
 	return c.sendPacketTimeout(payload, 10000)
 }

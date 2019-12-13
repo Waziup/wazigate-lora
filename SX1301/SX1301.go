@@ -26,6 +26,86 @@ type SX1301 struct {
 	pinRst gpio.Pin
 }
 
+type BoardConf C.struct_lgw_conf_board_s
+type RFConf C.struct_lgw_conf_rxrf_s
+type IFConf C.struct_lgw_conf_rxif_s 
+
+var boardconf = BoardConf{
+	clksrc: 1,
+	lorawan_public: true,
+}
+
+var rfconfs = []RFConf{
+	RFConf{
+		/* enable: */ true,
+		/* freq_hz: */ 867500000,
+		/* rssi_offset: */ -166.0,
+		/* type: */ C.LGW_RADIO_TYPE_SX1257,
+		/* tx_enable: */ false,
+		/* tx_notch_freq: */ 0, // 129000,
+	},
+	RFConf{
+		/* enable: */ true,
+		/* freq_hz: */ 868500000,
+		/* rssi_offset: */ -166.0,
+		/* type: */ C.LGW_RADIO_TYPE_SX1257,
+		/* tx_enable: */ false,
+		/* tx_notch_freq: */ 0, // 129000,
+	},
+}
+
+var ifconfs = []IFConf{
+	IFConf{
+		enable: true,
+		rf_chain: 1,
+		freq_hz: -400000,
+	}, IFConf{
+		enable: true,
+		rf_chain: 1,
+		freq_hz: -200000,
+	}, IFConf{
+		enable: true,
+		rf_chain: 1,
+		freq_hz: 0,
+	}, IFConf{
+		enable: true,
+		rf_chain: 0,
+		freq_hz: -400000,
+	}, IFConf{
+		enable: true,
+		rf_chain: 0,
+		freq_hz: -200000,
+	}, IFConf{
+		enable: true,
+		rf_chain: 0,
+		freq_hz: 0,
+	}, IFConf{
+		enable: true,
+		rf_chain: 0,
+		freq_hz: 200000,
+	}, IFConf{
+		enable: true,
+		rf_chain: 0,
+		freq_hz: 400000,
+	},
+}
+
+var chanLoRaStd = IFConf{
+	enable: true,
+	rf_chain: 1,
+	freq_hz: -200000,
+	bandwidth: C.BW_250KHZ,
+	datarate: C.DR_LORA_SF7,
+}
+
+var chanFSK = IFConf{
+	enable: true,
+	rf_chain: 1,
+	freq_hz: 300000,
+	bandwidth: C.BW_125KHZ,
+	datarate: 50000,
+}
+
 func New(pinRst gpio.Pin) *SX1301 {
 	return &SX1301{
 		pinRst: pinRst,
@@ -40,11 +120,43 @@ func (c *SX1301) Reset() error {
 	return nil
 }
 
+// var lwgm uint64 = 0xAA555A0000000000
+
 func (c *SX1301) On() error {
-	e := C.lgw_start()
+	e := C.lgw_board_setconf(C.struct_lgw_conf_board_s(boardconf))
 	if e != C.LGW_HAL_SUCCESS {
-		return fmt.Errorf("code %d", e)
+		return fmt.Errorf("can not set board conf: code %d", e)
 	}
+
+	for i, rfconf := range rfconfs {
+		e = C.lgw_rxrf_setconf(C.uchar(i), C.struct_lgw_conf_rxrf_s(rfconf))
+		if e != C.LGW_HAL_SUCCESS {
+			return fmt.Errorf("can not set rxrf conf: code %d", e)
+		}
+	}
+
+	for i, ifconf := range ifconfs {
+		e = C.lgw_rxif_setconf(C.uchar(i), C.struct_lgw_conf_rxif_s(ifconf))
+		if e != C.LGW_HAL_SUCCESS {
+			return fmt.Errorf("can not set rxif conf: code %d", e)
+		}
+	}
+
+	e = C.lgw_rxif_setconf(8, C.struct_lgw_conf_rxif_s(chanLoRaStd))
+	if e != C.LGW_HAL_SUCCESS {
+		return fmt.Errorf("can not set rxif conf (LoRa std): code %d", e)
+	}
+
+	e = C.lgw_rxif_setconf(9, C.struct_lgw_conf_rxif_s(chanFSK))
+	if e != C.LGW_HAL_SUCCESS {
+		return fmt.Errorf("can not set rxif conf (LoRa fsk): code %d", e)
+	}
+
+	e = C.lgw_start()
+	if e != C.LGW_HAL_SUCCESS {
+		return fmt.Errorf("can not turn on: code %d", e)
+	}
+
 	return nil
 }
 

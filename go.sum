@@ -1,3 +1,11 @@
+github.com/Waziup/wazigate-edge v0.0.0-20191213091021-e016fed2ef89 h1:4tjkma2r3ouGK7bi1BQeuIGBHnk/RtA1pWnX/5hq3PE=
+github.com/Waziup/wazigate-edge/mqtt v0.0.0-20191213091021-e016fed2ef89 h1:H4PPVH3V2jHCA3nwaRIaHcNqa9D4ITNakGXoHmwrA3c=
+github.com/Waziup/wazigate-edge/mqtt v0.0.0-20191213091021-e016fed2ef89/go.mod h1:zRAx8fmQTBvpMFE97Y9pBkm8QUlfYAepST9Qu1fbmvE=
+github.com/Waziup/wazigate-rpi v0.0.0-20191204155719-329ba73795d3 h1:R2OaOAUBk+fRVJBlB6FgWFFwO62Ux1Xq4Wp7wU4hWbY=
+github.com/Waziup/wazigate-rpi/gpio v0.0.0-20191204155719-329ba73795d3 h1:pNK/k8YsJ7BBUw5RpEeuy4HBiNfVs2gnhUQUtK3yTiA=
+github.com/Waziup/wazigate-rpi/gpio v0.0.0-20191204155719-329ba73795d3/go.mod h1:uudwRClQumLa0Upn0MHp/wiRur6/OU4WgGMMxoUS7tc=
+github.com/Waziup/wazigate-rpi/spi v0.0.0-20191204155719-329ba73795d3 h1:ODHrbE8L9aqVXfnBFIMUOY10mt6Inbf9f5RZHlQTaAc=
+github.com/Waziup/wazigate-rpi/spi v0.0.0-20191204155719-329ba73795d3/go.mod h1:ixDNA9Hdy0DZuf61WGW8O1nIxEOUw+hKVvpyfvY8SJI=
 github.com/ecc1/gpio v0.0.0-20171107174639-450ac9ea6df7 h1:87CukuBNR73j2KmipKlPkTLR1JaxTt0r9HXTDLUclD4=
 github.com/ecc1/gpio v0.0.0-20171107174639-450ac9ea6df7/go.mod h1:LXSJyYdvUHvdCZFUJDqKHv0aRRXrTfZIVlYfBOslPmQ=
 github.com/ecc1/spi v0.0.0-20180427171038-91ea03fbebdc h1:7vkglXEJSsURr6+2kUWNIdyAs6BLiyWewT2Rd5RLwXU=
