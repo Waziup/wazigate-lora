@@ -132,12 +132,26 @@ func Discover() (lora.Radio, error) {
 	sx := New(dev, pinSS, pinRst)
 	sx.Logger = Logger
 	sx.LogLevel = LogLevel
-		
-	// Startup ...
-	if err = sx.On(); err != nil {
-		sx.Off()
+
+	sx.pinSS.Write(High)
+	delay(100)
+
+	sx.pinRst.Write(Low)
+	delay(100)
+	sx.pinRst.Write(High)
+	delay(100)
+
+	version, err := sx.readRegister(RegVersion)
+	if err != nil {
+		sx.Close()
 		return nil, err
 	}
+	sx.version = version
+	if version != VersionSX1272 && version != VersionSX1276 {
+		sx.Close()
+		return nil, fmt.Errorf("unknown chip version: 0x%x", version)
+	}
+
 	return sx, nil;
 }
 
@@ -152,36 +166,19 @@ func (c *Chip) Name() string {
 }
 
 // On Sets the module ON.
-func (c *Chip) On() error {
+func (c *Chip) Init(cfg lora.Config) error {
 
 	c.Log(LogLevelDebug, "Starting 'ON'.")
 
-	c.pinSS.Write(High)
-	time.Sleep(time.Second/10)
-
-	c.pinRst.Write(Low)
-	time.Sleep(time.Second/10)
-	c.pinRst.Write(High)
-	time.Sleep(time.Second/10)
-
-	version, err := c.readRegister(RegVersion)
-	if err != nil {
+	if err := c.RxChainCalibration(); err != nil {
 		return err
 	}
-	c.version = version
-	if version != VersionSX1272 && version != VersionSX1276 {
-		return fmt.Errorf("unknown chip version: 0x%x", version)
-	}
-
-	if err = c.RxChainCalibration(); err != nil {
-		return err
-	}
-	if err = c.SetMaxCurrent(0x1B); err != nil {
+	if err := c.SetMaxCurrent(0x1B); err != nil {
 		return err
 	}
 	c.Log(LogLevelVerbose, "Setting ON with maximum current supply.")
 
-	if err = c.SetLORA(); err != nil {
+	if err := c.SetLORA(); err != nil {
 		return err
 	}
 
@@ -340,8 +337,7 @@ func (c *Chip) On() error {
 	return nil
 }
 
-func (c *Chip) Off() error {
-	log.Println("off?")
+func (c *Chip) Close() error {
 	c.dev.Close()
 	c.pinSS.Write(Low)
 	c.pinSS.Unexport()
@@ -550,12 +546,18 @@ func (c *Chip) Receive() ([]*lora.RxPacket, error) {
 		return nil, nil
 	}
 	rssi, _ := c.GetRSSIpacket()
-	return []*lora.RxPacket{
-		&lora.RxPacket{
-			RSSI: rssi,
-			Data: data,
-		},
-	}, nil
+	snr, _ := c.getSNR()
+	pkt := &lora.RxPacket{
+		RSSI: rssi,
+		Data: data,
+		Freq: 865200000, // CH_10_868 = 865.20MHz
+		Modulation: "LORA",
+		LoRaSpr: c.spreadingFactor,
+		LoRaCR: c.codingRate+4,
+		LoRaBW: c.bandwidth+1,
+		LoRaSNR: float32(snr),
+	}
+	return []*lora.RxPacket{pkt}, nil
 }
 
 func (c *Chip) ReceiveAll(wait int) ([]byte, error) {
@@ -851,7 +853,7 @@ func (c *Chip) SetMode(m int) (err error) {
 	return nil
 }
 
-func (c *Chip) getSNR() (snr byte, err error) {
+func (c *Chip) getSNR() (snr int8, err error) {
 
 	c.Log(LogLevelDebug, "Starting 'getSNR'.")
 
@@ -862,11 +864,11 @@ func (c *Chip) getSNR() (snr byte, err error) {
         if value & 0x80 != 0 {
 			// The SNR sign bit is 1
             // Invert and divide by 4
-            value = ( ( 0xff^value + 1 ) & 0xFF ) >> 2;
-            snr = -value;
+            value = (( 0xff^value + 1) & 0xFF) >> 2;
+            snr = -int8(value);
         } else {
             // Divide by 4
-            snr = ( value & 0xFF ) >> 2;
+            snr = int8((value & 0xFF) >> 2);
 		}
 		
 		c.Log(LogLevelVerbose, "SNR value is %d.", snr)
@@ -890,7 +892,7 @@ func (c *Chip) GetRSSIpacket() (rssi int16, err error) {
 			// added by C. Pham
 			rssiv, _ := c.readRegister(REG_PKT_RSSI_VALUE)
 
-            if snr & 0x80 != 0 {
+            if snr < 0 {
                 // commented by C. Pham
                 //_RSSIpacket = -NOISE_ABSOLUTE_ZERO + 10.0 * SignalBwLog[_bandwidth] + NOISE_FIGURE + ( double )_SNR;
 
@@ -1737,19 +1739,21 @@ func (c *Chip) Send(pkt *lora.TxPacket) (err error) {
 			return err
 		}
 	}
+	var bw = pkt.LoRaBW-1;
 	if c.bandwidth != pkt.LoRaBW {
-		if !c.isBW(pkt.LoRaBW) {
+		if !c.isBW(bw) {
 			return fmt.Errorf("invalid bandwith: %v", pkt.LoRaBW)
 		}
-		if err = c.setBW(pkt.LoRaBW); err != nil {
+		if err = c.setBW(bw); err != nil {
 			return err
 		}
 	}
-	if c.codingRate != pkt.LoRaCR {
-		if !c.isCR(pkt.LoRaCR) {
+	var cr = pkt.LoRaCR - 4;
+	if c.codingRate != cr {
+		if !c.isCR(cr) {
 			return fmt.Errorf("invalid coding rate: %v", pkt.LoRaCR)
 		}
-		if err := c.setCR(pkt.LoRaCR); err != nil {
+		if err := c.setCR(cr); err != nil {
 			return err
 		}
 	}

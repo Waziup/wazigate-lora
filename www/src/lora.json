@@ -1,0 +1,172 @@
+{
+    "bandwidths": [
+        "7.8KHz, BW7K8",
+        "10.4KHz, BW10K4",
+        "15.6KHz, BW15K6",
+        "20.8KHz, BW20K8",
+        "31.2KHz, BW31K2",
+        "41.7KHz, BW41K7",
+        "62.5KHz, BW62K5",
+        "125KHz, BW125K",
+        "250KHz, BW250K",
+        "500KHz, BW500K"
+    ],
+    "spreadings": [
+        "SF7",
+        "SF8",
+        "SF9",
+        "SF10",
+        "SF11",
+        "SF12"
+    ],
+    "codings": [
+        "4/4",
+        "4/5",
+        "4/6",
+        "4/7",
+        "4/8"
+    ],
+    "defaultRegion": "EU",
+    "regions": {
+        "EU": {
+            "name": "EU 863-870, 🇪🇺 Europe",
+            "channels": ["CH10", "CH11", "CH12", "CH13", "CH14", "CH15", "TTN_EU_U1", "TTN_EU_U2", "TTN_EU_U3", "TTN_EU_U4", "TTN_EU_U5", "TTN_EU_U6", "TTN_EU_U7", "TTN_EU_U8", "TTN_EU_UFSK"],
+            "defaultChannel": "TTN_EU_U1"
+        },
+        "US": {
+            "name": "US 902-928 (🇺🇸 USA, 🇨🇦 Canada, 🇿🇦 South America)",
+            "channels": ["TTN_US_U1", "TTN_US_U2", "TTN_US_U3", "TTN_US_U4", "TTN_US_U5", "TTN_US_U6", "TTN_US_U7", "TTN_US_U8", "TTN_US_U9"],
+            "defaultChannel": "TTN_US_U1"
+        },
+        "CN": {
+            "name": "CN 470-510, 🇨🇳 China",
+            "channels": []
+        },
+        "AU": {
+            "name": "AU 915-928, 🇦🇺 Australia",
+            "channels": []
+        },
+        "AS0": {
+            "name": "AS 920-923, Asia (🇯🇵 Japan, 🇲🇾 Malaysia, 🇸🇬 Singapore, 🇮🇩 Indonesia)",
+            "channels": []
+        },
+        "AS1": {
+            "name": "AS 923-925, Asia (🇧🇳 Brunei, 🇰🇭 Cambodia, 🇭🇰 Hong Kong, 🇱🇦 Laos, 🇹🇼 Taiwan, 🇹🇭 Thailand, 🇻🇳 Vietnam)",
+            "channels": []
+        },
+        "KR": {
+            "name": "KR 920-923, 🇰🇷 Korea",
+            "channels": []
+        },
+        "IN": {
+            "name": "IN 865-867, 🇮🇳 India",
+            "channels": []
+        }
+    },
+    "channels": {
+        "CH10": {
+            "freq": 865200000,
+            "name": "865.2MHz, LoRA CH10"
+        },
+        "CH11": {
+            "freq": 865500000,
+            "name": "865.5MHz, LoRA CH11"
+        },
+        "CH12": {
+            "freq": 865800000,
+            "name": "865.8MHz, LoRA CH12"
+        },
+        "CH13": {
+            "freq": 866100000,
+            "name": "866.1MHz, LoRA CH13"
+        },
+        "CH14": {
+            "freq": 866400000,
+            "name": "866.4MHz, LoRA CH14"
+        },
+        "CH15": {
+            "freq": 866700000,
+            "name": "866.7MHz, LoRA CH15"
+        },
+        "CH16": {
+            "freq": 867000000,
+            "name": "867MHz, LoRA CH16"
+        },
+        "CH17": {
+            "freq": 868000000,
+            "name": "868MHz, LoRA CH17"
+        },
+        "TTN_EU_U1": {
+            "freq": 868100000,
+            "name": "868.1MHz, LoRAWAN CH1"
+        },
+        "TTN_EU_U2": {
+            "freq": 868300000,
+            "name": "868.3MHz, LoRAWAN CH2"
+        },
+        "TTN_EU_U3": {
+            "freq": 868500000,
+            "name": "868.5MHz, LoRAWAN CH3"
+        },
+        "TTN_EU_U4": {
+            "freq": 867100000,
+            "name": "867.1MHz, LoRAWAN CH4"
+        },
+        "TTN_EU_U5": {
+            "freq": 867300000,
+            "name": "867.3MHz, LoRAWAN CH5"
+        },
+        "TTN_EU_U6": {
+            "freq": 867500000,
+            "name": "867.5MHz, LoRAWAN CH6"
+        },
+        "TTN_EU_U7": {
+            "freq": 867700000,
+            "name": "867.7MHz, LoRAWAN CH7"
+        },
+        "TTN_EU_U8": {
+            "freq": 867900000,
+            "name": "867.9MHz, LoRAWAN CH8"
+        },
+        "TTN_EU_UFSK": {
+            "freq": 868800000,
+            "name": "868.8MHz, LoRAWAN FSK"
+        },
+        "TTN_US_U1": {
+            "freq": 903900000,
+            "name": "903.9MHz, LoRAWAN CH1"
+        },
+        "TTN_US_U2": {
+            "freq": 904100000,
+            "name": "904.1MHz, LoRAWAN CH2"
+        },
+        "TTN_US_U3": {
+            "freq": 904300000,
+            "name": "904.3MHz, LoRAWAN CH3"
+        },
+        "TTN_US_U4": {
+            "freq": 904500000,
+            "name": "904.5MHz, LoRAWAN CH4"
+        },
+        "TTN_US_U5": {
+            "freq": 904700000,
+            "name": "904.7MHz, LoRAWAN CH5"
+        },
+        "TTN_US_U6": {
+            "freq": 904900000,
+            "name": "904.9MHz, LoRAWAN CH6"
+        },
+        "TTN_US_U7": {
+            "freq": 905100000,
+            "name": "905.1MHz, LoRAWAN CH7"
+        },
+        "TTN_US_U8": {
+            "freq": 905300000,
+            "name": "905.3MHz, LoRAWAN CH8"
+        },
+        "TTN_US_U9": {
+            "freq": 904600000,
+            "name": "904.6MHz, LoRAWAN CH9"
+        }
+    }
+}
