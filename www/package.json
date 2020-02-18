@@ -17,12 +17,13 @@
     "version": "0.17.1",
     "wazigate": {
         "version": "1",
-        "menu": [
-            {
+        "menu": [{
                 "name": "LoRaWAN Configuration",
                 "icon": "img/lora.svg",
                 "href": "config.html"
-            }
-        ]
+        }],
+        "meta": [{
+            "wazigate-lora": "inflateLoRaConfig"
+        }]
     }
 }

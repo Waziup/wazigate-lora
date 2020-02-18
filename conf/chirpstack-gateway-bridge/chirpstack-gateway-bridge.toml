@@ -2,6 +2,6 @@
 # configuration example and documentation.
 
 [integration.mqtt.auth.generic]
-servers=["tcp://mosquitto:1883"]
+servers=["tcp://wazigate-edge:1883"]
 username=""
 password=""

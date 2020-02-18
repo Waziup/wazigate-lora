@@ -44,10 +44,7 @@ name="EU_863_870"
   max_dr=5
 
 [network_server.gateway.backend.mqtt]
-server="tcp://mosquitto:1883"
+server="tcp://wazigate-edge:1883"
 
 [join_server.default]
 server="http://chirpstack-application-server:8003"
-
-[geolocation_server]
-server="chirpstack-geolocation-server:8005"

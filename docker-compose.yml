@@ -2,19 +2,39 @@ version: "3"
 
 services:
   wazigate-lora:
+    container_name: wazigate-lora
     image: waziup/wazigate-lora
+    build:
+      context: .
+      dockerfile: Dockerfile
+    environment:
+      - WAZIGATE_EDGE=wazigate-edge:880
+      - WAZIGATE_MQTT=wazigate-edg
+    depends_on:
+      - wazigate-edge
+      - chirpstack-network-server
+      - chirpstack-application-server
+      - chirpstack-gateway-bridge
     volumes:
       - ./conf:/etc/wazigate-lora
 
   chirpstack-network-server:
+    container_name: chirpstack-network-server
     image: arribada/chirpstack-networkserver
+    depends_on:
+      - postgresql
+      - redis
     volumes:
       - ./conf/chirpstack-network-server:/etc/chirpstack-network-server
     labels:
       io.waziup.wazigate.dep: "wazigate-lora"
 
   chirpstack-application-server:
+    container_name: chirpstack-application-server
     image: arribada/chirpstack-app-server
+    depends_on:
+      - postgresql
+      - redis
     ports:
       - 8080:8080
     volumes:
@@ -23,6 +43,7 @@ services:
       io.waziup.wazigate.dep: "wazigate-lora"
 
   chirpstack-gateway-bridge:
+    container_name: chirpstack-gateway-bridge
     image: arribada/chirpstack-gateway-bridge
     ports:
       - 1700:1700/udp
@@ -31,14 +52,8 @@ services:
     labels:
       io.waziup.wazigate.dep: "wazigate-lora"
 
-  chirpstack-geolocation-server:
-    image: arribada/chirpstack-geo-server
-    volumes:
-      - ./conf/chirpstack-geolocation-server:/etc/chirpstack-geolocation-server
-    labels:
-      io.waziup.wazigate.dep: "wazigate-lora"
-
   postgresql:
+    container_name: postgresql
     image: postgres:9.6-alpine
     volumes:
       - ./conf/postgresql/initdb:/docker-entrypoint-initdb.d
@@ -47,6 +62,7 @@ services:
       io.waziup.wazigate.dep: "wazigate-lora"
 
   redis:
+    container_name: redis
     image: redis:5-alpine
     volumes:
       - redisdata:/data
