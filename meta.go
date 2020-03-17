@@ -3,8 +3,8 @@ package main
 import "log"
 
 // Meta is device metadata.
-type Meta struct {
-	WazigateLora *WazigateLora `json:"wazigate-lora"`
+type LoRaWANMeta struct {
+	WazigateLora *WazigateLora `json:"lorawan"`
 }
 
 type WazigateLora struct {

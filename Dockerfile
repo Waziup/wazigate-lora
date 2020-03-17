@@ -2,7 +2,7 @@ FROM golang:1.13-alpine AS development
 
 ENV CGO_ENABLED=0
 
-RUN apk add --no-cache ca-certificates make git bash alpine-sdk \
+RUN apk add --no-cache ca-certificates git \
     && mkdir -p /wazigate-lora
 
 COPY . /wazigate-lora

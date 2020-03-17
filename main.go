@@ -8,20 +8,19 @@ import (
 	"io/ioutil"
 	"log"
 	"net/http"
-	"os"
+	"strconv"
 	"strings"
 	"time"
 
-	"github.com/Waziup/wazigate-edge/mqtt"
 	"github.com/brocaar/chirpstack-api/go/v3/as/external/api"
-	as "github.com/brocaar/chirpstack-api/go/v3/as/integration"
+	asIntegr "github.com/brocaar/chirpstack-api/go/v3/as/integration"
 	gw "github.com/brocaar/chirpstack-api/go/v3/gw"
 	"github.com/golang/protobuf/jsonpb"
 	"github.com/golang/protobuf/proto"
 )
 
-var mqttAddr = "127.0.0.1"
-var edgeAddr = "127.0.0.1"
+// var mqttAddr = "127.0.0.1"
+// var edgeAddr = "127.0.0.1"
 
 var version string
 var branch string
@@ -35,37 +34,85 @@ func main() {
 		log.Printf("this is %s build. v%s", branch, version)
 	}
 
-	envEdgeAddr := os.Getenv("WAZIGATE_EDGE")
-	if envEdgeAddr != "" {
-		edgeAddr = envEdgeAddr
-	}
-	log.Printf("using wazigate edge at \"http://%s\"", edgeAddr)
+	// envEdgeAddr := os.Getenv("WAZIGATE_EDGE")
+	// if envEdgeAddr != "" {
+	// 	edgeAddr = envEdgeAddr
+	// }
+	// log.Printf("using wazigate edge at \"http://%s\"", edgeAddr)
 
-	go forwarder()
-	initDevice()
+	// go forwarder()
+
+	// grpcConn, err := grpc.Dial("chirpstack-application-server")
+	// if err == nil {
+
+	// 	asDeviceService := asAPI.NewDeviceServiceClient(grpcConn)
+	// 	_, err := asDeviceService.Create(context.Background(), &asAPI.CreateDeviceRequest{
+	// 		Device: &asAPI.Device{
+	// 			DevEui:          "aa555a0000001236",
+	// 			ApplicationId:   1,
+	// 			Description:     "wazidev 2 desc",
+	// 			DeviceProfileId: "ef0a74cf-fc54-4e20-902a-612ed8508c4c",
+	// 			Name:            "Wazidev2",
+	// 		},
+	// 	})
+	// 	if err != nil {
+	// 		log.Printf("Err Can not make call: %v", err)
+	// 	}
+
+	// 	deviceProfileService := asAPI.NewDeviceProfileServiceClient(grpcConn)
+	// 	resp0, err := deviceProfileService.List(context.Background(), &asAPI.ListDeviceProfileRequest{
+	// 		OrganizationId: 1,
+	// 	})
+	// 	if err != nil {
+	// 		profiles := resp0.GetResult()
+	// 		log.Println(profiles)
+	// 	} else {
+	// 		log.Printf("Err Can not make call: %v", err)
+	// 	}
+
+	// 	resp1, err := deviceProfileService.Get(context.Background(), &asAPI.GetDeviceProfileRequest{
+	// 		Id: "ef0a74cf-fc54-4e20-902a-612ed8508c4c",
+	// 	})
+	// 	if err != nil {
+	// 		profile := resp1.DeviceProfile
+	// 		log.Println(profile)
+	// 	} else {
+	// 		log.Printf("Err Can not make call: %v", err)
+	// 	}
+
+	// } else {
+	// 	log.Printf("Err Can not dial grpc: %v", err)
+	// }
 
 	for true {
-		if !strings.ContainsRune(mqttAddr, ':') {
-			mqttAddr += ":1883"
-		}
-		log.Printf("dialing \"mqtt://%s\" ...", mqttAddr)
-		client, err := mqtt.Dial(mqttAddr, "wazigate-lora", true, nil, nil)
-		if err != nil {
-			log.Printf("err: %v", err)
-			time.Sleep(time.Second * 5)
-			continue
-		}
-		log.Printf("waiting for messages ...")
-
-		err = Serve(client)
-		if err != nil {
-			log.Printf("err: %v", err)
-			client.Disconnect()
-			time.Sleep(time.Second * 5)
-			continue
-		}
-		client.Disconnect()
+		initDevice()
+		err := serve()
+		log.Printf("Err %v", err)
+		time.Sleep(time.Second * 5)
 	}
+
+	// for true {
+	// 	if !strings.ContainsRune(mqttAddr, ':') {
+	// 		mqttAddr += ":1883"
+	// 	}
+	// 	log.Printf("dialing \"mqtt://%s\" ...", mqttAddr)
+	// 	client, err := mqtt.Dial(mqttAddr, "wazigate-lora", true, nil, nil)
+	// 	if err != nil {
+	// 		log.Printf("err: %v", err)
+	// 		time.Sleep(time.Second * 5)
+	// 		continue
+	// 	}
+	// 	log.Printf("waiting for messages ...")
+
+	// 	err = Serve(client)
+	// 	if err != nil {
+	// 		log.Printf("err: %v", err)
+	// 		client.Disconnect()
+	// 		time.Sleep(time.Second * 5)
+	// 		continue
+	// 	}
+	// 	client.Disconnect()
+	// }
 }
 
 // Serve reads messages from the MQTT server:
@@ -76,59 +123,82 @@ func main() {
 // - Chirpstack AS Error
 // - Edge Actuator Value
 // - Edge Actuator Values
-func Serve(client *mqtt.Client) error {
+func serve() error {
 
-	client.Subscribe("gateway/+/event/+", 0)
-	client.Subscribe("application/+/device/+/+", 0)
-	client.Subscribe("devices/+/actuators/+/value", 0)
-	client.Subscribe("devices/+/actuators/+/values", 0)
-	client.Subscribe("devices/+/meta", 0)
+	Wazigate.Subscribe("gateway/+/event/+")
+	Wazigate.Subscribe("application/+/device/+/+")
+	Wazigate.Subscribe("devices/+/actuators/+/value")
+	Wazigate.Subscribe("devices/+/actuators/+/values")
+	Wazigate.Subscribe("devices/+/meta")
 
 	for true {
-		msg, err := client.Message()
+		msg, err := Wazigate.Message()
 		if err != nil {
 			return err
 		}
 		topic := strings.Split(msg.Topic, "/")
 
+		// Topic: devices/+/meta
 		if len(topic) == 3 && topic[0] == "devices" && topic[2] == "meta" {
+			// A device's metadata changed. If the device is a LoRaWAN device we will update
+			// the DevEUIs map here with the DevEUI from the metadata.
+
 			id := topic[1]
-			if id == gatewayID {
-				var meta Meta
-				if err = json.Unmarshal(msg.Data, &meta); err != nil {
-					log.Printf("err Can not parse gateway meta: %v", err)
-					log.Printf("err msg: %s", msg.Data)
+			var meta Meta
+			if err = json.Unmarshal(msg.Data, &meta); err != nil {
+				log.Printf("Err Can not parse device meta: %v", err)
+				log.Printf("Err msg: %s", msg.Data)
+				continue
+			}
+			lorawan := meta.Get("lorawan")
+			if !lorawan.Undefined() {
+				log.Println("--- Device Meta")
+				devEUIStr, err := lorawan.Get("DevEUI").String()
+				if err != nil {
+					log.Printf("Err Device %q DevEUI: %v", id, err)
 					continue
 				}
-				setMeta(meta.WazigateLora)
+				devEUI, err := strconv.ParseUint(devEUIStr, 16, 64)
+				if err != nil {
+					log.Printf("Err Device %q DevEUI: %v", id, err)
+					continue
+				}
+				devEUIs[devEUI] = id
+				log.Printf("DevEUI %016X -> Waziup ID %s", devEUI, id)
 			}
 
+			// Topic: gateway/+/event/+
 		} else if len(topic) == 4 && topic[0] == "gateway" {
+			// This topic is served by ChirpStack and emits Gateway events.
+			// A 'gateway' from CS is just a packet forwarder for Waziup.
 			switch topic[3] {
 			case "stats":
 				var gwStats gw.GatewayStats
 				if err = Unmarshal(msg.Data, &gwStats); err != nil {
-					log.Printf("can not unmarshal message %q: %v", msg.Topic, err)
+					log.Printf("Err Can not unmarshal message %q: %v", msg.Topic, err)
 					return err
 				}
 				gwID := gwStats.GetGatewayId()
 				gwTime := gwStats.GetTime()
-				log.Printf("gateway %s status: %v", gwID, gwTime)
+				log.Printf("Forwarder %s status: %v", gwID, gwTime)
 			case "up":
 				var gwUp gw.UplinkFrame
 				if err = proto.Unmarshal(msg.Data, &gwUp); err != nil {
-					log.Printf("err: can not unmarshal message %q: %v", msg.Topic, err)
+					log.Printf("Err Can not unmarshal message %q: %v", msg.Topic, err)
 					return err
 				}
+
+				log.Println("--- LoRaWAN Radio Rx")
+
 				loraModInfo := gwUp.TxInfo.GetLoraModulationInfo()
 				data := base64.StdEncoding.EncodeToString(gwUp.GetPhyPayload())
 				gwid := binary.BigEndian.Uint64(gwUp.RxInfo.GatewayId)
 				if loraModInfo != nil {
-					log.Printf("gw %X: LoRa: %.2f MHz, SF%d BW%d CR%s, Data: %s", gwid, float64(gwUp.TxInfo.Frequency)/1000000, loraModInfo.SpreadingFactor, loraModInfo.Bandwidth, loraModInfo.CodeRate, data)
+					log.Printf("Forwarder %X: LoRa: %.2f MHz, SF%d BW%d CR%s, Data: %s", gwid, float64(gwUp.TxInfo.Frequency)/1000000, loraModInfo.SpreadingFactor, loraModInfo.Bandwidth, loraModInfo.CodeRate, data)
 				}
 				fskModInfo := gwUp.TxInfo.GetFskModulationInfo()
 				if fskModInfo != nil {
-					log.Printf("gw %X: FSK %.2f MHz, Bitrate: %d, Data: %s", gwid, float64(gwUp.TxInfo.Frequency)/1000000, fskModInfo.Datarate, data)
+					log.Printf("Forwarder %X: FSK %.2f MHz, Bitrate: %d, Data: %s", gwid, float64(gwUp.TxInfo.Frequency)/1000000, fskModInfo.Datarate, data)
 				}
 			case "ack", "exec", "raw":
 				// ignore
@@ -137,24 +207,65 @@ func Serve(client *mqtt.Client) error {
 				log.Printf("Unknown MQTT topic %q.", msg.Topic)
 				continue
 			}
+
+			// Topic: application/+/device/+/+
 		} else if len(topic) == 5 && topic[0] == "application" && topic[2] == "device" {
+			// This topic is served by ChirpStack and emits device data on appllication level.
+			// It gives us the decrypted payload sent by a device.
 			switch topic[4] {
 			case "rx":
-				var uplinkEvt as.UplinkEvent
+				var uplinkEvt asIntegr.UplinkEvent
 				if err = Unmarshal(msg.Data, &uplinkEvt); err != nil {
-					log.Printf("can not unmarshal message %q: %v", msg.Topic, err)
+					log.Printf("Err Can not unmarshal message %q: %v", msg.Topic, err)
 					return err
 				}
 				eui := binary.BigEndian.Uint64(uplinkEvt.GetDevEui())
 				data := base64.StdEncoding.EncodeToString(uplinkEvt.GetData())
-				log.Printf("device %X: %s", eui, data)
+				log.Printf("DevEUI %X: %s", eui, data)
+
+				dev := devEUIs[eui]
+				if dev == "" {
+					log.Printf("DevEUI %X: No Waziup device for that EUI!", eui)
+				} else {
+					log.Printf("DevEUI %X -> Waziup ID %s", eui, dev)
+				}
 
 				objJSON := uplinkEvt.GetObjectJson()
 				if objJSON != "" {
-					var obj = make(map[string]map[string]interface{})
-					err = json.Unmarshal([]byte(objJSON), &obj)
+					var lppData = make(map[string]map[string]interface{})
+					err = json.Unmarshal([]byte(objJSON), &lppData)
 					if err == nil {
-						log.Printf("LPP data: %+v", obj)
+						log.Printf("LPP Data: %+v", lppData)
+						if dev != "" {
+						LPPDATA:
+							for sensorKind, data := range lppData {
+								for channel, value := range data {
+									sensorID := sensorKind + "_" + channel
+									err := Wazigate.AddSensorValue(dev, sensorID, value)
+									if err != nil {
+										if IsNotExist(err) {
+											err := Wazigate.AddSensor(dev, &Sensor{
+												ID:    sensorID,
+												Name:  sensorKind + " " + channel,
+												Value: value,
+												Meta: Meta{
+													"createdBy": "wazigate-lora",
+												},
+											})
+											if err != nil {
+												log.Printf("Err Can not create sensor %q: %v", sensorID, err)
+												continue LPPDATA
+											} else {
+												log.Printf("Sensor %q has been created as it did not exist.", sensorID)
+											}
+										} else {
+											log.Printf("Err Can not create value on sensor %q: %v", sensorID, err)
+										}
+									}
+								}
+							}
+						}
+
 						// for key, value := range values {
 						// 	path := "/devices/" + eui + "/sensors/" + key + "/value"
 						// 	resp, err := post(path, value)
@@ -169,43 +280,42 @@ func Serve(client *mqtt.Client) error {
 						// 	}
 						// }
 					} else {
-						log.Printf("no LPP data: %v", err)
-						log.Printf("data: %q", objJSON)
+						log.Printf("Err No LPP Data: %v\n%v", err, objJSON)
 					}
 				} else {
-					log.Printf("the payload was not parsed")
+					log.Printf("Err The payload was not parsed by Chirpstack")
 				}
 
 			case "status":
-				var statusEvt as.StatusEvent
+				var statusEvt asIntegr.StatusEvent
 				if err = Unmarshal(msg.Data, &statusEvt); err != nil {
-					log.Printf("Can not unmarshal message %q: %v", msg.Topic, err)
+					log.Printf("Err Can not unmarshal message %q: %v", msg.Topic, err)
 					return err
 				}
 				eui := statusEvt.GetDevEui()
 				battery := statusEvt.GetBatteryLevel()
 				log.Printf("Received status from %v: %v Battery", eui, battery)
 			case "error":
-				var errorEvt as.ErrorEvent
+				var errorEvt asIntegr.ErrorEvent
 				if err = Unmarshal(msg.Data, &errorEvt); err != nil {
-					log.Printf("Can not unmarshal message %q: %v", msg.Topic, err)
+					log.Printf("Err Can not unmarshal message %q: %v", msg.Topic, err)
 					return err
 				}
 				eui := errorEvt.GetDevEui()
 				e := errorEvt.GetError()
 				log.Printf("Received error from %v: %v", eui, e)
 			case "ack":
-				var ackEvt as.AckEvent
+				var ackEvt asIntegr.AckEvent
 				if err = Unmarshal(msg.Data, &ackEvt); err != nil {
-					log.Printf("Can not unmarshal message %q: %v", msg.Topic, err)
+					log.Printf("Err Can not unmarshal message %q: %v", msg.Topic, err)
 					return err
 				}
 				eui := ackEvt.GetDevEui()
 				log.Printf("Received ack from %v", eui)
 			case "join":
-				var joinEvt as.JoinEvent
+				var joinEvt asIntegr.JoinEvent
 				if err = Unmarshal(msg.Data, &joinEvt); err != nil {
-					log.Printf("Can not unmarshal message %q: %v", msg.Topic, err)
+					log.Printf("Err Can not unmarshal message %q: %v", msg.Topic, err)
 					return err
 				}
 				eui := joinEvt.GetDevEui()
@@ -216,7 +326,12 @@ func Serve(client *mqtt.Client) error {
 				continue
 
 			}
+
+			// Topic: devices/+/actuators/+/value
 		} else if len(topic) == 5 && topic[0] == "devices" && topic[2] == "actuators" {
+			// This topic is served by the Wazigate Edge and emits actuator values.
+			// If the actuator belongs to a LoRaWAN device (a device with lorawan metadata)
+			// then we will forward the value as payload to ChirpStack.
 
 			item := api.EnqueueDeviceQueueItemRequest{
 				DeviceQueueItem: &api.DeviceQueueItem{
@@ -262,65 +377,94 @@ func Unmarshal(data []byte, msg proto.Message) error {
 	return jsonpb.Unmarshal(bytes.NewReader(data), msg)
 }
 
+var devEUIs = map[uint64]string{}
+
 func initDevice() {
+
+	log.Println("--- Init Device")
+
 	for true {
 		// read the current device ID (gateway ID)
-		resp, err := get("/device/id")
+		id, err := Wazigate.GetID()
 		if err != nil {
-			time.Sleep(3 * time.Second)
-			log.Printf("Err %v", err)
+			log.Printf("Err Can not get Wazigate ID: %v", err)
 			log.Println("Can not call edge API, waiting for some seconds ...")
+			time.Sleep(3 * time.Second)
+			continue
+		}
+		log.Printf("Gateway ID: %s", id)
+
+		// get all lorawan devices
+		devices, err := Wazigate.GetDevices(&DevicesQuery{
+			Meta: []string{"lorawan"},
+		})
+		if err != nil {
+			log.Printf("Err Can not get LoRaWAN devices: %v", err)
+			log.Println("Can not call edge API, waiting for some seconds ...")
+			time.Sleep(3 * time.Second)
 			continue
 		}
 
-		if resp.StatusCode != 200 {
-			body, _ := ioutil.ReadAll(resp.Body)
-			log.Printf("Err The API returned %d %s on GET \"/device/id\".", resp.StatusCode, resp.Status)
-			log.Fatalf("Err Body: %s", body)
+		for _, device := range devices {
+			meta := device.Meta.Get("lorawan")
+			if meta.Undefined() {
+				log.Printf("Err Device %s has no lorawan meta?!?!", device.ID)
+				continue
+			}
+			devEUIStr, err := meta.Get("DevEUI").String()
+			if err != nil {
+				log.Printf("Err Device %s DevEUI:", err)
+				continue
+			}
+			devEUI, err := strconv.ParseUint(devEUIStr, 16, 64)
+			if err != nil {
+				log.Printf("Err Device %s DevEUI:", err)
+				continue
+			}
+			devEUIs[devEUI] = device.ID
+			log.Printf("DevEUI %016X -> Waziup ID %s", devEUI, device.ID)
 		}
 
-		body, _ := ioutil.ReadAll(resp.Body)
-		gatewayID = string(body)
-		log.Printf("Device ID: %s", gatewayID)
+		log.Printf("There are %d LoRaWAN devices.", len(devEUIs))
 
 		// read device lora settings from /device/meta
 
-		resp, err = get("/device/meta")
-		if err != nil {
-			log.Fatalf("Err Can not call edge API: %s", body)
-		}
+		// resp, err = get("/device/meta")
+		// if err != nil {
+		// 	log.Fatalf("Err Can not call edge API: %s", body)
+		// }
 
-		if resp.StatusCode != 200 {
-			body, _ := ioutil.ReadAll(resp.Body)
-			log.Printf("Err The API returned %d %s on GET \"/device/meta\".", resp.StatusCode, resp.Status)
-			log.Fatalf("Err Body: %s", body)
-		}
+		// if resp.StatusCode != 200 {
+		// 	body, _ := ioutil.ReadAll(resp.Body)
+		// 	log.Printf("Err The API returned %d %s on GET \"/device/meta\".", resp.StatusCode, resp.Status)
+		// 	log.Fatalf("Err Body: %s", body)
+		// }
 
-		body, _ = ioutil.ReadAll(resp.Body)
-		var meta Meta
-		if err = json.Unmarshal(body, &meta); err != nil {
-			log.Printf("Err Can not parse device meta: %v", err)
-			log.Println("Err GET \"/device/meta\" returned:")
-			log.Fatalf("Err Body: %s", body)
-		}
+		// body, _ = ioutil.ReadAll(resp.Body)
+		// var meta LoRaWANMeta
+		// if err = json.Unmarshal(body, &meta); err != nil {
+		// 	log.Printf("Err Can not parse device meta: %v", err)
+		// 	log.Println("Err GET \"/device/meta\" returned:")
+		// 	log.Fatalf("Err Body: %s", body)
+		// }
 
-		setMeta(meta.WazigateLora)
+		// setMeta(meta.WazigateLora)
 		break
 	}
 }
 
-func get(path string) (*http.Response, error) {
-	return http.Get("http://" + edgeAddr + path)
-}
+// func get(path string) (*http.Response, error) {
+// 	return http.Get("http://" + edgeAddr + path)
+// }
 
-func post(path string, value interface{}) (*http.Response, error) {
-	body, err := json.Marshal(value)
-	if err != nil {
-		return nil, err
-	}
-	return http.Post("http://"+edgeAddr+path, "application/json; charset=utf-8", bytes.NewBuffer(body))
-}
+// func post(path string, value interface{}) (*http.Response, error) {
+// 	body, err := json.Marshal(value)
+// 	if err != nil {
+// 		return nil, err
+// 	}
+// 	return http.Post("http://"+edgeAddr+path, "application/json; charset=utf-8", bytes.NewBuffer(body))
+// }
 
-func isOK(statusCode int) bool {
-	return statusCode >= 200 && statusCode < 300
-}
+// func isOK(statusCode int) bool {
+// 	return statusCode >= 200 && statusCode < 300
+// }
