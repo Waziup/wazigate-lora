@@ -45,6 +45,7 @@ name="EU_863_870"
 
 [network_server.gateway.backend.mqtt]
 server="tcp://wazigate-edge:1883"
+client_id="chirpstack-network-server"
 
 [join_server.default]
 server="http://chirpstack-application-server:8003"

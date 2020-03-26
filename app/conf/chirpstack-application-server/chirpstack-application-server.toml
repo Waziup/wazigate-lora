@@ -12,6 +12,7 @@ marshaler="json"
 
 [application_server.integration.mqtt]
 server="tcp://wazigate-edge:1883"
+client_id="chirpstack-application-server"
 
 [application_server.api]
 public_host="chirpstack-application-server:8001"

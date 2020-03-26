@@ -3,5 +3,4 @@
 
 [integration.mqtt.auth.generic]
 servers=["tcp://wazigate-edge:1883"]
-username=""
-password=""
+client_id="chirpstack-application-server"
