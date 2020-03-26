@@ -7,12 +7,14 @@ import (
 	"encoding/json"
 	"io/ioutil"
 	"log"
+	"net"
 	"net/http"
+	"os"
 	"strconv"
 	"strings"
 	"time"
 
-	"github.com/brocaar/chirpstack-api/go/v3/as/external/api"
+	asAPI "github.com/brocaar/chirpstack-api/go/v3/as/external/api"
 	asIntegr "github.com/brocaar/chirpstack-api/go/v3/as/integration"
 	gw "github.com/brocaar/chirpstack-api/go/v3/gw"
 	"github.com/golang/protobuf/jsonpb"
@@ -34,55 +36,26 @@ func main() {
 		log.Printf("this is %s build. v%s", branch, version)
 	}
 
-	// envEdgeAddr := os.Getenv("WAZIGATE_EDGE")
-	// if envEdgeAddr != "" {
-	// 	edgeAddr = envEdgeAddr
-	// }
-	// log.Printf("using wazigate edge at \"http://%s\"", edgeAddr)
+	if err := readConfig(); err != nil {
+		log.Fatalf("can not read config: %v", err)
+	}
 
-	// go forwarder()
+	os.Remove("app/conf/socket.sock")
+	listener, err := net.Listen("unix", "app/conf/socket.sock")
+	if err != nil {
+		log.Fatalf("can not listen on 'socket.sock': %v", err)
+	}
+	go http.Serve(listener, http.HandlerFunc(serveHTTP))
+	defer listener.Close()
 
-	// grpcConn, err := grpc.Dial("chirpstack-application-server")
-	// if err == nil {
-
-	// 	asDeviceService := asAPI.NewDeviceServiceClient(grpcConn)
-	// 	_, err := asDeviceService.Create(context.Background(), &asAPI.CreateDeviceRequest{
-	// 		Device: &asAPI.Device{
-	// 			DevEui:          "aa555a0000001236",
-	// 			ApplicationId:   1,
-	// 			Description:     "wazidev 2 desc",
-	// 			DeviceProfileId: "ef0a74cf-fc54-4e20-902a-612ed8508c4c",
-	// 			Name:            "Wazidev2",
-	// 		},
-	// 	})
-	// 	if err != nil {
-	// 		log.Printf("Err Can not make call: %v", err)
-	// 	}
-
-	// 	deviceProfileService := asAPI.NewDeviceProfileServiceClient(grpcConn)
-	// 	resp0, err := deviceProfileService.List(context.Background(), &asAPI.ListDeviceProfileRequest{
-	// 		OrganizationId: 1,
-	// 	})
-	// 	if err != nil {
-	// 		profiles := resp0.GetResult()
-	// 		log.Println(profiles)
-	// 	} else {
-	// 		log.Printf("Err Can not make call: %v", err)
-	// 	}
-
-	// 	resp1, err := deviceProfileService.Get(context.Background(), &asAPI.GetDeviceProfileRequest{
-	// 		Id: "ef0a74cf-fc54-4e20-902a-612ed8508c4c",
-	// 	})
-	// 	if err != nil {
-	// 		profile := resp1.DeviceProfile
-	// 		log.Println(profile)
-	// 	} else {
-	// 		log.Printf("Err Can not make call: %v", err)
-	// 	}
-
-	// } else {
-	// 	log.Printf("Err Can not dial grpc: %v", err)
-	// }
+	for true {
+		err := initChirpstack()
+		if err == nil {
+			break
+		}
+		log.Printf("Err %v", err)
+		time.Sleep(time.Second * 5)
+	}
 
 	for true {
 		initDevice()
@@ -90,29 +63,6 @@ func main() {
 		log.Printf("Err %v", err)
 		time.Sleep(time.Second * 5)
 	}
-
-	// for true {
-	// 	if !strings.ContainsRune(mqttAddr, ':') {
-	// 		mqttAddr += ":1883"
-	// 	}
-	// 	log.Printf("dialing \"mqtt://%s\" ...", mqttAddr)
-	// 	client, err := mqtt.Dial(mqttAddr, "wazigate-lora", true, nil, nil)
-	// 	if err != nil {
-	// 		log.Printf("err: %v", err)
-	// 		time.Sleep(time.Second * 5)
-	// 		continue
-	// 	}
-	// 	log.Printf("waiting for messages ...")
-
-	// 	err = Serve(client)
-	// 	if err != nil {
-	// 		log.Printf("err: %v", err)
-	// 		client.Disconnect()
-	// 		time.Sleep(time.Second * 5)
-	// 		continue
-	// 	}
-	// 	client.Disconnect()
-	// }
 }
 
 // Serve reads messages from the MQTT server:
@@ -333,8 +283,8 @@ func serve() error {
 			// If the actuator belongs to a LoRaWAN device (a device with lorawan metadata)
 			// then we will forward the value as payload to ChirpStack.
 
-			item := api.EnqueueDeviceQueueItemRequest{
-				DeviceQueueItem: &api.DeviceQueueItem{
+			item := asAPI.EnqueueDeviceQueueItemRequest{
+				DeviceQueueItem: &asAPI.DeviceQueueItem{
 					DevEui: topic[3],
 					FPort:  100,
 					Data:   msg.Data,
@@ -452,19 +402,3 @@ func initDevice() {
 		break
 	}
 }
-
-// func get(path string) (*http.Response, error) {
-// 	return http.Get("http://" + edgeAddr + path)
-// }
-
-// func post(path string, value interface{}) (*http.Response, error) {
-// 	body, err := json.Marshal(value)
-// 	if err != nil {
-// 		return nil, err
-// 	}
-// 	return http.Post("http://"+edgeAddr+path, "application/json; charset=utf-8", bytes.NewBuffer(body))
-// }
-
-// func isOK(statusCode int) bool {
-// 	return statusCode >= 200 && statusCode < 300
-// }
