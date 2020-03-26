@@ -6,16 +6,17 @@ COPY . /wazigate-lora
 WORKDIR /wazigate-lora
 
 RUN apk add --no-cache ca-certificates git zip \
-    && mkdir -p /wazigate-lora \
-    && zip -r index.zip app \
-    && go build -a -installsuffix cgo -ldflags "-s -w" -o build/wazigate-lora .
+    && cd app \
+    && zip -q -r ../index.zip . \
+    && cd /wazigate-lora \
+    && go build -a -installsuffix cgo -ldflags "-s -w" -o wazigate-lora .
 
 FROM alpine:latest AS production
 
 WORKDIR /root/
 RUN apk --no-cache add ca-certificates curl
 
-COPY --from=development /wazigate-lora/build/wazigate-lora .
+COPY --from=development /wazigate-lora/wazigate-lora .
 COPY --from=development /wazigate-lora/index.zip /index.zip
 
 COPY www www
