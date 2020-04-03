@@ -3,7 +3,6 @@ package main
 import (
 	"encoding/json"
 	"errors"
-	"time"
 )
 
 var ErrInvalidData = errors.New("malformed cpham payload")
