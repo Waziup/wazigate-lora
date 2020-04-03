@@ -21,7 +21,6 @@ func parseCPham(data []byte) (fields map[string]interface{}, err error) {
 			err = ErrInvalidData
 			return
 		}
-		time.Sleep(1 * time.Second)
 		data = data[i+1:]
 		i = 0
 		open := 0
@@ -39,8 +38,8 @@ func parseCPham(data []byte) (fields map[string]interface{}, err error) {
 				}
 				if data[i] == '"' {
 					inStr = false
-					i++
 				}
+				i++
 				continue
 			}
 			if data[i] == '{' {
@@ -67,7 +66,6 @@ func parseCPham(data []byte) (fields map[string]interface{}, err error) {
 		if err != nil {
 			value = string(data[:i])
 		}
-		time.Sleep(1 * time.Second)
 		if i < len(data) {
 			data = data[i+1:]
 		} else {
