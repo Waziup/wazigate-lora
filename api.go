@@ -24,8 +24,6 @@ func serveAPI(resp http.ResponseWriter, req *http.Request) {
 				serveError(resp, err)
 				return
 			}
-			r.ProtoMessage()
-			r.GetResult()
 			serveJSON(resp, r.Result)
 			return
 		case http.MethodPost:

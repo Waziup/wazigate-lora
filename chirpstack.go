@@ -237,6 +237,72 @@ func initChirpstack() error {
 	return nil
 }
 
+////////////////////////////////////////////////////////////////////////////////
+
+func setDeviceProfile(devEUI string, id string, profileID string) error {
+	ctx := context.Background()
+	deviceClient := asAPI.NewDeviceServiceClient(chirpstack)
+	resp, err := deviceClient.Get(ctx, &asAPI.GetDeviceRequest{
+		DevEui: devEUI,
+	})
+	if status.Code(err) == codes.NotFound {
+		log.Println("Creating Chirpstack device ...")
+		_, err := deviceClient.Create(ctx, &asAPI.CreateDeviceRequest{
+			Device: &asAPI.Device{
+				DevEui:          devEUI,
+				Name:            devEUI,
+				Description:     fmt.Sprintf("Automatically created for Waziup device %q.\nDO NOT DELETE!", id),
+				DeviceProfileId: profileID,
+				ApplicationId:   config.Application.Id,
+			},
+		})
+		return err
+	}
+	if err != nil {
+		return err
+	}
+	if resp.Device.DeviceProfileId == profileID {
+		return nil
+	}
+	log.Println("Updating Chirpstack device ...")
+	_, err = deviceClient.Update(ctx, &asAPI.UpdateDeviceRequest{
+		Device: &asAPI.Device{
+			DevEui:          devEUI,
+			ApplicationId:   config.Application.Id,
+			DeviceProfileId: profileID,
+			Name:            resp.Device.Name,
+			Description:     resp.Device.Description,
+		},
+	})
+	return err
+}
+
+func setWaziDevActivation(devEUI string, devAddr string, nwkSEncKey string, appSKey string) error {
+	ctx := context.Background()
+	deviceClient := asAPI.NewDeviceServiceClient(chirpstack)
+	_, err := deviceClient.GetActivation(ctx, &asAPI.GetDeviceActivationRequest{
+		DevEui: devEUI,
+	})
+	if status.Code(err) == codes.NotFound {
+		_, err = deviceClient.Activate(ctx, &asAPI.ActivateDeviceRequest{
+			DeviceActivation: &asAPI.DeviceActivation{
+				DevEui:      appSKey,
+				DevAddr:     devAddr,
+				AppSKey:     appSKey,
+				NwkSEncKey:  nwkSEncKey,
+				SNwkSIntKey: nwkSEncKey,
+				FNwkSIntKey: nwkSEncKey,
+				FCntUp:      0,
+				NFCntDown:   0,
+				AFCntDown:   0,
+			},
+		})
+	}
+	return err
+}
+
+////////////////////////////////////////////////////////////////////////////////
+
 var jwtCredentials = &JWTCredentials{}
 
 // JWTCredentials provides JWT credentials for gRPC
