@@ -46,9 +46,11 @@
             "network_server_id": 0,
             "mac_version": "1.0.1",
             "reg_params_revision": "A",
+            "rf_region": "EU868",
             "factory_preset_freqs": [
                 868100000
-            ]
+            ],
+            "payload_codec": "CAYENNE_LPP"
         }
     ]
 }

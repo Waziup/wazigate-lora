@@ -239,54 +239,64 @@ func initChirpstack() error {
 
 ////////////////////////////////////////////////////////////////////////////////
 
-func setDeviceProfile(devEUI string, id string, profileID string) error {
+func setDeviceProfileWaziDev(devEUI string, id string) error {
 	ctx := context.Background()
+	deviceProfileId := config.DeviceProfiles[0].Id
 	deviceClient := asAPI.NewDeviceServiceClient(chirpstack)
 	resp, err := deviceClient.Get(ctx, &asAPI.GetDeviceRequest{
 		DevEui: devEUI,
 	})
 	if status.Code(err) == codes.NotFound {
-		log.Println("Creating Chirpstack device ...")
 		_, err := deviceClient.Create(ctx, &asAPI.CreateDeviceRequest{
 			Device: &asAPI.Device{
 				DevEui:          devEUI,
 				Name:            devEUI,
 				Description:     fmt.Sprintf("Automatically created for Waziup device %q.\nDO NOT DELETE!", id),
-				DeviceProfileId: profileID,
+				DeviceProfileId: deviceProfileId,
 				ApplicationId:   config.Application.Id,
 			},
 		})
+		if err == nil {
+			log.Println("Creating Chirpstack device ... OK")
+		} else {
+			log.Printf("Err Can not create Chirpstack device: %v", err)
+		}
 		return err
 	}
 	if err != nil {
+		log.Printf("Err Can not read Chirpstakc device: %v", err)
 		return err
 	}
-	if resp.Device.DeviceProfileId == profileID {
+	if resp.Device.DeviceProfileId == deviceProfileId {
 		return nil
 	}
-	log.Println("Updating Chirpstack device ...")
 	_, err = deviceClient.Update(ctx, &asAPI.UpdateDeviceRequest{
 		Device: &asAPI.Device{
 			DevEui:          devEUI,
 			ApplicationId:   config.Application.Id,
-			DeviceProfileId: profileID,
+			DeviceProfileId: deviceProfileId,
 			Name:            resp.Device.Name,
 			Description:     resp.Device.Description,
 		},
 	})
+	if err == nil {
+		log.Println("Updating Chirpstack device ... OK")
+	} else {
+		log.Printf("Err Can not update Chirpstack device: %v", err)
+	}
 	return err
 }
 
 func setWaziDevActivation(devEUI string, devAddr string, nwkSEncKey string, appSKey string) error {
 	ctx := context.Background()
 	deviceClient := asAPI.NewDeviceServiceClient(chirpstack)
-	_, err := deviceClient.GetActivation(ctx, &asAPI.GetDeviceActivationRequest{
+	r, err := deviceClient.GetActivation(ctx, &asAPI.GetDeviceActivationRequest{
 		DevEui: devEUI,
 	})
 	if status.Code(err) == codes.NotFound {
 		_, err = deviceClient.Activate(ctx, &asAPI.ActivateDeviceRequest{
 			DeviceActivation: &asAPI.DeviceActivation{
-				DevEui:      appSKey,
+				DevEui:      devEUI,
 				DevAddr:     devAddr,
 				AppSKey:     appSKey,
 				NwkSEncKey:  nwkSEncKey,
@@ -297,8 +307,43 @@ func setWaziDevActivation(devEUI string, devAddr string, nwkSEncKey string, appS
 				AFCntDown:   0,
 			},
 		})
+		if err == nil {
+			log.Println("Activating Chirpstack device ... OK")
+		} else {
+			log.Printf("Err Can not activate Chirpstack device: %v", err)
+		}
+		return err
 	}
-	return err
+	if err != nil {
+		log.Printf("Err Can not get Chirpstack device activation: %v", err)
+		return err
+	}
+	if r.DeviceActivation.DevEui != devEUI ||
+		r.DeviceActivation.DevAddr != devAddr ||
+		r.DeviceActivation.AppSKey != appSKey ||
+		r.DeviceActivation.NwkSEncKey != nwkSEncKey {
+
+		_, err = deviceClient.Activate(ctx, &asAPI.ActivateDeviceRequest{
+			DeviceActivation: &asAPI.DeviceActivation{
+				DevEui:      devEUI,
+				DevAddr:     devAddr,
+				AppSKey:     appSKey,
+				NwkSEncKey:  nwkSEncKey,
+				SNwkSIntKey: nwkSEncKey,
+				FNwkSIntKey: nwkSEncKey,
+				FCntUp:      0,
+				NFCntDown:   0,
+				AFCntDown:   0,
+			},
+		})
+		if err == nil {
+			log.Println("Reactivating Chirpstack device ... OK")
+		} else {
+			log.Printf("Err Can reactivate Chirpstack device: %v", err)
+		}
+		return err
+	}
+	return nil
 }
 
 ////////////////////////////////////////////////////////////////////////////////

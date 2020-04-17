@@ -11,6 +11,25 @@ import (
 func serveAPI(resp http.ResponseWriter, req *http.Request) {
 
 	switch req.URL.Path {
+	case "/randomDevAddr":
+		if req.Method == http.MethodPost {
+			decoder := json.NewDecoder(req.Body)
+			var devEUI string
+			if err := decoder.Decode(&devEUI); err != nil {
+				serveError(resp, err)
+				return
+			}
+			deviceService := asAPI.NewDeviceServiceClient(chirpstack)
+			r, err := deviceService.GetRandomDevAddr(context.Background(), &asAPI.GetRandomDevAddrRequest{
+				DevEui: devEUI,
+			})
+			if err != nil {
+				serveError(resp, err)
+				return
+			}
+			serveJSON(resp, r.DevAddr)
+			return
+		}
 	case "/profiles":
 		switch req.Method {
 		case http.MethodGet:

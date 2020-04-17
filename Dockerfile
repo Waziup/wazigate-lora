@@ -19,7 +19,7 @@ RUN apk --no-cache add ca-certificates curl
 COPY --from=development /wazigate-lora/wazigate-lora .
 COPY --from=development /wazigate-lora/index.zip /index.zip
 
-COPY www www
+COPY www/dist www/dist
 COPY app/conf/wazigate-lora /etc/wazigate-lora
 
 ENTRYPOINT ["./wazigate-lora"]

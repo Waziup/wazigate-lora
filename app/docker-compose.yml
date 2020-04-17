@@ -17,7 +17,7 @@ services:
       - chirpstack-application-server
       - chirpstack-gateway-bridge
     volumes:
-      - ./conf:/root/app/conf
+      - .:/root/app
       - /var/run/dbus:/var/run/dbus
       - /sys/class/gpio:/sys/class/gpio
       - /dev:/dev

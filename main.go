@@ -40,11 +40,12 @@ func main() {
 		log.Fatalf("can not read config: %v", err)
 	}
 
-	os.Remove("app/conf/socket.sock")
-	listener, err := net.Listen("unix", "app/conf/socket.sock")
+	os.Remove("app/proxy.sock")
+	listener, err := net.Listen("unix", "app/proxy.sock")
 	if err != nil {
-		log.Fatalf("can not listen on 'socket.sock': %v", err)
+		log.Fatalf("can not listen on 'proxy.sock': %v", err)
 	}
+	log.Println("Proxy listening on 'proxy.sock'.")
 	go http.Serve(listener, http.HandlerFunc(serveHTTP))
 	defer listener.Close()
 
@@ -114,30 +115,31 @@ func serve() error {
 					continue
 				}
 				devEUIs[devEUIInt64] = id
-				log.Printf("DevEUI %016X -> Waziup ID %s", devEUI, id)
+				log.Printf("DevEUI %s -> Waziup ID %s", devEUI, id)
 				profile, err := lorawan.Get("profile").String()
 				if err != nil {
 					log.Printf("Err Device %q profile: %v", id, err)
 					continue
 				}
-				setDeviceProfile(devEUI, id, profile)
 				if profile == "WaziDev" {
-					devAddr, err := lorawan.Get("devAddr").String()
-					if err != nil {
-						log.Printf("Warn Device %q not activated: devAddr: %v", id, err)
-						continue
+					if err = setDeviceProfileWaziDev(devEUI, id); err == nil {
+						devAddr, err := lorawan.Get("devAddr").String()
+						if err != nil {
+							log.Printf("Warn Device %q not activated: devAddr: %v", id, err)
+							continue
+						}
+						appSKey, err := lorawan.Get("appSKey").String()
+						if err != nil {
+							log.Printf("Warn Device %q not activated: appSKey: %v", id, err)
+							continue
+						}
+						nwkSEncKey, err := lorawan.Get("nwkSEncKey").String()
+						if err != nil {
+							log.Printf("Warn Device %q not activated: nwkSEncKey: %v", id, err)
+							continue
+						}
+						setWaziDevActivation(devEUI, devAddr, nwkSEncKey, appSKey)
 					}
-					appSKey, err := lorawan.Get("appSKey").String()
-					if err != nil {
-						log.Printf("Warn Device %q not activated: appSKey: %v", id, err)
-						continue
-					}
-					nwkSEncKey, err := lorawan.Get("nwkSEncKey").String()
-					if err != nil {
-						log.Printf("Warn Device %q not activated: nwkSEncKey: %v", id, err)
-						continue
-					}
-					setWaziDevActivation(devEUI, devAddr, appSKey, nwkSEncKey)
 				}
 			}
 
