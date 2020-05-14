@@ -20,6 +20,7 @@ COPY --from=development /wazigate-lora/wazigate-lora .
 COPY --from=development /wazigate-lora/index.zip /index.zip
 
 COPY www/dist www/dist
+COPY www/img www/img
 COPY app/conf/wazigate-lora /etc/wazigate-lora
 
 ENTRYPOINT ["./wazigate-lora"]
