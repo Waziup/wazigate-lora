@@ -15,16 +15,14 @@
     },
     "scripts": {},
     "version": "0.17.1",
-    "wazigate": {
-		"icon": "icon.png",
-		"internal": false,
-        "version": "1",
-        "menu": [
-            {
-                "name": "LoRaWAN Configuration",
-                "icon": "img/lora.svg",
-                "href": "config.html"
+    "waziapp": {
+        "menu": {
+            "settings.lora": {
+                "primary": "LoRaWAN",
+                "icon": "img/lorawan.svg",
+                "prio": 120
             }
-        ]
+        },
+        "hook": "dist/hook.js"
     }
 }

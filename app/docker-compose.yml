@@ -2,7 +2,7 @@ version: "3"
 
 services:
   wazigate-lora:
-    container_name: wazigate-lora
+    container_name: waziup.wazigate-lora
     image: waziup/wazigate-lora
     build:
       context: ./wazigate-lora
@@ -23,7 +23,7 @@ services:
       - /dev:/dev
 
   chirpstack-network-server:
-    container_name: chirpstack-network-server
+    container_name: waziup.wazigate-lora.chirpstack-network-server
     image: waziup/chirpstack-network-server:3.8.0
     build:
       context: ./chirpstack-network-server
@@ -42,7 +42,7 @@ services:
       io.waziup.wazigate.dep: "wazigate-lora"
 
   chirpstack-application-server:
-    container_name: chirpstack-application-server
+    container_name: waziup.wazigate-lora.chirpstack-application-server
     image: waziup/chirpstack-application-server:3.9.0
     build:
       context: ./chirpstack-application-server
@@ -63,7 +63,7 @@ services:
       io.waziup.wazigate.dep: "wazigate-lora"
 
   chirpstack-gateway-bridge:
-    container_name: chirpstack-gateway-bridge
+    container_name: waziup.wazigate-lora.chirpstack-gateway-bridge
     image: waziup/chirpstack-gateway-bridge:3.7.1
     build:
       context: ./chirpstack-gateway-bridge
@@ -112,7 +112,7 @@ services:
       io.waziup.wazigate.dep: "wazigate-lora"
 
   single_chan_pkt_fwd:
-    container_name: single_chan_pkt_fwd
+    container_name: waziup.wazigate-lora.single_chan_pkt_fwd
     image: waziup/single_chan_pkt_fwd
     build:
       context: ./single_chan_pkt_fwd
