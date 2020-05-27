@@ -17,11 +17,6 @@
     "version": "0.17.1",
     "waziapp": {
         "menu": {
-            "settings.lora": {
-                "primary": "LoRaWAN",
-                "icon": "img/lorawan.svg",
-                "prio": 120
-            }
         },
         "hook": "dist/hook.js"
     }
