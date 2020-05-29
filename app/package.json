@@ -14,10 +14,9 @@
         "url": "git+https://github.com/waziup/wazigate-lora.git"
     },
     "scripts": {},
-    "version": "0.17.1",
+    "version": "0.17.2",
     "waziapp": {
-        "menu": {
-        },
+        "menu": {},
         "hook": "dist/hook.js"
     }
 }
