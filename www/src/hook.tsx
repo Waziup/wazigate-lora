@@ -3,6 +3,7 @@ import RemoveIcon from '@material-ui/icons/Remove';
 import RouterIcon from '@material-ui/icons/Router';
 import SaveIcon from '@material-ui/icons/Save';
 import AddIcon from '@material-ui/icons/AddCircleOutline';
+import clsx from "clsx";
 import { Device, Waziup, Sensor, Actuator, DeviceHook, DeviceHookProps, DeviceMenuHook, MenuHookProps, HookRegistry } from "waziup";
 import {
     Grow,
@@ -26,7 +27,8 @@ import {
     InputAdornment,
     CardContent,
     CardHeader,
-    Card
+    Card,
+    FormHelperText
 } from '@material-ui/core';
 
 // Add a item to the dashboard menu.
@@ -37,11 +39,12 @@ import {
 // + Apps
 //   - LoRaWAN    <- new
 // ```
-hooks.setMenuHook("apps.lorawan", {
-    primary: "LoRaWAN",
-    icon: <RouterIcon />,
-    href: "#/apps/waziup.wazigate-lora/index.html",
-});
+
+// hooks.setMenuHook("apps.lorawan", {
+//     primary: "LoRaWAN",
+//     icon: <RouterIcon />,
+//     href: "#/apps/waziup.wazigate-lora/index.html",
+// });
 
 // A DeviceMenuHook adds a item to the devices context menu.
 // We show a "Make LoRaWAN" for all devices that don't have `lorawan` metadata.  
@@ -107,6 +110,9 @@ const useStylesLoRaWAN = makeStyles((theme) => ({
     body: {
         padding: theme.spacing(2),
     },
+    input: {
+        marginBottom: theme.spacing(1)
+    },
     shortInput: {
         width: 300,
     },
@@ -138,9 +144,10 @@ hooks.addDeviceHook((props: DeviceHookProps) => {
         setDevice
     } = props;
 
-    const meta = device?.meta["lorawan"] as LoRaWANMeta;
+    const oldMeta = device?.meta["lorawan"] as LoRaWANMeta;
 
-    const [newMeta, setNewMeta] = useState<LoRaWANMeta>(null);
+    const [newMeta, setNewMeta] = useState<Partial<LoRaWANMeta>>(null);
+    const [showErrors, setShowErrors] = useState(false);
 
     const setMeta = (meta: LoRaWANMeta) => {
         setDevice((device: Device) => ({
@@ -161,7 +168,7 @@ hooks.addDeviceHook((props: DeviceHookProps) => {
         });
     };
     const handleDevAddrChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-        const devAddr = event.target.value as string;
+        const devAddr = cleanHex(event.target.value as string);
         setNewMeta({
             ...newMeta,
             devEUI: devAddr2EUI(devAddr),
@@ -171,20 +178,20 @@ hooks.addDeviceHook((props: DeviceHookProps) => {
     const handleNwkSKeyChange = (event: React.ChangeEvent<HTMLInputElement>) => {
         setNewMeta({
             ...newMeta,
-            nwkSEncKey: event.target.value as string
+            nwkSEncKey: cleanHex(event.target.value as string)
         });
     };
     const handleAppKeyChange = (event: React.ChangeEvent<HTMLInputElement>) => {
         setNewMeta({
             ...newMeta,
-            appSKey: event.target.value as string
+            appSKey: cleanHex(event.target.value as string)
         });
     };
 
     const handleDevEUIChange = (event: React.ChangeEvent<HTMLInputElement>) => {
         setNewMeta({
             ...newMeta,
-            devEUI: event.target.value as string
+            devEUI: cleanHex(event.target.value as string)
         });
     };
 
@@ -202,14 +209,31 @@ hooks.addDeviceHook((props: DeviceHookProps) => {
         }
     }
 
+    const meta: LoRaWANMeta = {
+        devAddr: "",
+        nwkSEncKey: "",
+        appSKey: "",
+        devEUI: "",
+        profile: "",
+        ...oldMeta,
+        ...newMeta
+    };
+
+    const devAddrErr = meta.devAddr.length !== 8 ? "8 digits required, got "+meta.devAddr.length : null;
+    const nwkSEncKeyErr = meta.nwkSEncKey.length !== 32 ? "32 digits required, got "+meta.nwkSEncKey.length : null;
+    const appSKeyErr = meta.appSKey.length !== 32 ? "32 digits required, got "+meta.appSKey.length : null;
+    const devEUIErr = meta.devEUI.length !== 16 ? "16 digits required, got "+meta.devEUI.length : null;
+    const hasErrors = devAddrErr || nwkSEncKeyErr || appSKeyErr || devEUIErr;
+
     const submitChanges = () => {
+
+        setShowErrors(true);
+        if(hasErrors) return;
+
         wazigate.setDeviceMeta(device.id, {
-            lorawan: {
-                ...meta,
-                ...newMeta
-            }
+            lorawan: meta
         }).then(() => {
-            setMeta(newMeta);
+            setMeta(meta);
             setNewMeta(null);
         }, (error) => {
             // TODO: improve
@@ -250,7 +274,7 @@ hooks.addDeviceHook((props: DeviceHookProps) => {
         // });
     }
 
-    if (!meta) {
+    if (!oldMeta) {
         return null;
     }
 
@@ -268,26 +292,26 @@ hooks.addDeviceHook((props: DeviceHookProps) => {
                 />
                 <CardContent>
                     <FormGroup>
-                        <FormControl className={classes.shortInput}>
+                        <FormControl className={clsx(classes.longInput, classes.input)}>
                             <InputLabel id="lorawan-profile-label">LoRaWAN Profile</InputLabel>
                             <Select
                                 labelId="lorawan-profile-label"
                                 id="lorawan-profile"
-                                value={newMeta?.profile || meta?.profile || ""}
+                                value={meta.profile}
                                 onChange={handleProfileChange}
                             >
                                 <MenuItem value="WaziDev">WaziDev</MenuItem>
                                 <MenuItem value="Other">Other</MenuItem>
                             </Select>
                         </FormControl><br />
-                        {(newMeta?.profile || meta?.profile) === "WaziDev" ? (
+                        {(newMeta?.profile || oldMeta?.profile) === "WaziDev" ? (
                             <Fragment>
-                                <FormControl>
+                                <FormControl error={showErrors && !!devAddrErr} className={classes.input}>
                                     <InputLabel htmlFor="lorawan-devaddr">DevAddr (Device Address)</InputLabel>
                                     <Input
                                         id="lorawan-devaddr"
                                         onChange={handleDevAddrChange}
-                                        value={newMeta?.devAddr || meta?.devAddr || ""}
+                                        value={meta.devAddr}
                                         className={classes.shortInput}
                                         endAdornment={
                                             <InputAdornment position="end">
@@ -299,13 +323,14 @@ hooks.addDeviceHook((props: DeviceHookProps) => {
                                             </InputAdornment>
                                         }
                                     />
+                                    <FormHelperText>{devAddrErr}</FormHelperText>
                                 </FormControl>
-                                <FormControl>
+                                <FormControl className={classes.input} error={showErrors && !!nwkSEncKeyErr}>
                                     <InputLabel htmlFor="lorawan-nwskey">NwkSKey (Network Session Key)</InputLabel>
                                     <Input
                                         id="lorawan-nwskey"
                                         onChange={handleNwkSKeyChange}
-                                        value={newMeta?.nwkSEncKey || meta?.nwkSEncKey || ""}
+                                        value={meta.nwkSEncKey}
                                         className={classes.longInput}
                                         endAdornment={
                                             <InputAdornment position="end">
@@ -317,21 +342,28 @@ hooks.addDeviceHook((props: DeviceHookProps) => {
                                             </InputAdornment>
                                         }
                                     />
+                                    <FormHelperText>{nwkSEncKeyErr}</FormHelperText>
                                 </FormControl>
                                 <TextField
                                     id="lorawan-appkey"
                                     label="AppKey (App Key)"
                                     onChange={handleAppKeyChange}
-                                    value={newMeta?.appSKey || meta?.appSKey || ""}
-                                    className={classes.longInput} />
+                                    value={meta.appSKey}
+                                    className={clsx(classes.longInput, classes.input)}
+                                    helperText={appSKeyErr}
+                                    error={showErrors && !!appSKeyErr}
+                                    />
                             </Fragment>
                         ) : (
                             <TextField
                                 id="lorawan-deveui"
                                 label="Device EUI"
                                 onChange={handleDevEUIChange}
-                                value={newMeta?.devEUI || meta?.devEUI || ""}
-                                className={classes.longInput} />
+                                value={meta.devEUI}
+                                className={clsx(classes.longInput, classes.input)}
+                                helperText={devEUIErr}
+                                error={showErrors && !!devEUIErr}
+                                />
                         )}
                     </FormGroup>
                 </CardContent>
@@ -360,6 +392,10 @@ hooks.addDeviceHook((props: DeviceHookProps) => {
         </div></div>
     );
 });
+
+function cleanHex(s: string) {
+    return s.replace(/[^a-zA-Z0-9]/g, "");
+}
 
 // Hook scripts always need to call this function to signal that the hook file was
 // successfully executed.
