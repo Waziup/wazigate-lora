@@ -190,7 +190,8 @@ func (w *Waziup) Set(res string, i interface{}, o interface{}) error {
 
 // ToURL returns the absolute URL of an API endpoint path.
 func (w *Waziup) ToURL(path string) string {
-	return "http://" + w.Host + ":880/" + path
+	// return "http://" + w.Host + ":880/" + path
+	return "http://" + w.Host + "/" + path
 }
 
 // GetID returns the Wazigate ID.

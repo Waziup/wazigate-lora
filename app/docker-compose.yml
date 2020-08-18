@@ -5,13 +5,16 @@ services:
     container_name: waziup.wazigate-lora
     image: waziup/wazigate-lora
     build:
-      context: ./wazigate-lora
+      context: ../
+    #   context: ./wazigate-lora
     logging:
       driver: "json-file"
       options:
         max-size: "200k"
         max-file: "10"
     restart: always
+    # environment:
+    #   - WAZIGATE_EDGE=wazigate-edge:80
     depends_on:
       - chirpstack-network-server
       - chirpstack-application-server
