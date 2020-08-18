@@ -20,7 +20,13 @@ import {
     Paper,
     Button,
     CardActions,
-    Tooltip
+    Tooltip,
+    FormGroup,
+    Input,
+    InputAdornment,
+    CardContent,
+    CardHeader,
+    Card
 } from '@material-ui/core';
 
 // Add a item to the dashboard menu.
@@ -47,20 +53,19 @@ hooks.addDeviceMenuHook((props: DeviceHookProps & MenuHookProps) => {
     } = props;
     const handleClick = () => {
         handleMenuClose();
+        const lorawanMeta = {
+            profile: "WaziDev",
+        };
         setDevice((device: Device) => ({
             ...device,
             meta: {
                 ...device.meta,
-                lorawan: {
-                    profile: "",
-                }
+                lorawan: lorawanMeta
             }
         }));
-        // gateway.setDeviceMeta(device.id, {
-        //     lorawan: {
-        //         DevEUI: null,
-        //     }
-        // })
+        wazigate.setDeviceMeta(device.id, {
+            lorawan: lorawanMeta
+        })
     }
 
     if (device === null || device.meta.lorawan) {
@@ -80,10 +85,14 @@ hooks.addDeviceMenuHook((props: DeviceHookProps & MenuHookProps) => {
 const useStylesLoRaWAN = makeStyles((theme) => ({
     root: {
         overflow: "auto",
+        textAlign: "center",
     },
     scrollBox: {
         padding: theme.spacing(2),
         minWidth: "fit-content",
+        maxWidth: 650,
+        display: "inline-block",
+        textAlign: "left",
     },
     paper: {
         background: "#d8dee9",
@@ -99,18 +108,17 @@ const useStylesLoRaWAN = makeStyles((theme) => ({
         padding: theme.spacing(2),
     },
     shortInput: {
-        width: "200px",
+        width: 300,
     },
     longInput: {
-        width: 400,
-        maxWidth: "100%",
-    },
-    button: {
-        margin: "16px 8px 0px",
+        width: 500,
     },
     footer: {
         color: "#34425a",
     },
+    cardBtn: {
+        marginRight: theme.spacing(2),
+    }
 }));
 
 type LoRaWANMeta = {
@@ -132,6 +140,8 @@ hooks.addDeviceHook((props: DeviceHookProps) => {
 
     const meta = device?.meta["lorawan"] as LoRaWANMeta;
 
+    const [newMeta, setNewMeta] = useState<LoRaWANMeta>(null);
+
     const setMeta = (meta: LoRaWANMeta) => {
         setDevice((device: Device) => ({
             ...device,
@@ -142,45 +152,49 @@ hooks.addDeviceHook((props: DeviceHookProps) => {
         }));
     }
 
-    const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+    const hasUnsavedChanges = newMeta != null;
 
-    const handleProfileChange = (event: React.ChangeEvent<{ value: unknown }>) => {
-        setMeta({
-            ...meta,
+    const handleProfileChange = (event: React.ChangeEvent<HTMLSelectElement>) => {
+        setNewMeta({
+            ...newMeta,
             profile: event.target.value as string
         });
-        setHasUnsavedChanges(true);
     };
-    const handleDevAddrChange = (event: React.ChangeEvent<{ value: unknown }>) => {
+    const handleDevAddrChange = (event: React.ChangeEvent<HTMLInputElement>) => {
         const devAddr = event.target.value as string;
-        setMeta({
-            ...meta,
+        setNewMeta({
+            ...newMeta,
             devEUI: devAddr2EUI(devAddr),
             devAddr: devAddr
         });
-        setHasUnsavedChanges(true);
     };
-    const handleNwkSKeyChange = (event: React.ChangeEvent<{ value: unknown }>) => {
-        setMeta({
-            ...meta,
+    const handleNwkSKeyChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+        setNewMeta({
+            ...newMeta,
             nwkSEncKey: event.target.value as string
         });
-        setHasUnsavedChanges(true);
     };
-    const handleAppKeyChange = (event: React.ChangeEvent<{ value: unknown }>) => {
-        setMeta({
-            ...meta,
+    const handleAppKeyChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+        setNewMeta({
+            ...newMeta,
             appSKey: event.target.value as string
         });
-        setHasUnsavedChanges(true);
+    };
+
+    const handleDevEUIChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+        setNewMeta({
+            ...newMeta,
+            devEUI: event.target.value as string
+        });
     };
 
     const handleRemoveClick = () => {
-        if(confirm("Do you want to remove the LoRaWAN settings from this device?")) {
+        if (confirm("Do you want to remove the LoRaWAN settings from this device?")) {
             wazigate.setDeviceMeta(device.id, {
                 lorawan: null
             }).then(() => {
                 setMeta(null);
+                setNewMeta(null);
             }, (error) => {
                 // TODO: improve
                 alert(error);
@@ -188,33 +202,40 @@ hooks.addDeviceHook((props: DeviceHookProps) => {
         }
     }
 
-    const saveChanges = () => {
+    const submitChanges = () => {
         wazigate.setDeviceMeta(device.id, {
-            lorawan: meta
+            lorawan: {
+                ...meta,
+                ...newMeta
+            }
         }).then(() => {
-            setHasUnsavedChanges(false);
+            setMeta(newMeta);
+            setNewMeta(null);
         }, (error) => {
             // TODO: improve
             alert(error);
         });
     }
 
+    const resetChanges = () => {
+        setNewMeta(null);
+    }
+
     const generateKeys = () => {
-        const r = () => "0123456789ABCDEF"[Math.random()*16|0];
+        const r = () => "0123456789ABCDEF"[Math.random() * 16 | 0];
         const rk = () => {
             var k = new Array(32);
-            for(var i=0;i<32;i++) k[i] = r();
+            for (var i = 0; i < 32; i++) k[i] = r();
             return k.join("");
         }
-        setMeta({
-            ...meta,
+        setNewMeta({
+            ...newMeta,
             nwkSEncKey: rk(),
             appSKey: rk()
         });
-        setHasUnsavedChanges(true);
     }
 
-    const devAddr2EUI = (devAddr: string) => "AA555A00"+devAddr;
+    const devAddr2EUI = (devAddr: string) => "AA555A00" + devAddr;
 
     const generateDevAddr = async () => {
         // TODO: implement :)
@@ -229,83 +250,113 @@ hooks.addDeviceHook((props: DeviceHookProps) => {
         // });
     }
 
-    // TODO: UI inputs should show an error if the keys or devAddr is bad formatted
+    if (!meta) {
+        return null;
+    }
 
+    // TODO: UI inputs should show an error if the keys or devAddr is bad formatted
     return (
         <div className={classes.root}><div className={classes.scrollBox}>
-        <Grow in={!!meta} key="waziup.wazigate-lora">
-        <Paper variant="outlined" className={classes.paper}>
-            <Toolbar className={classes.header} variant="dense">
-                <IconButton edge="start">
-                    <RouterIcon />
-                </IconButton>
-                <Typography variant="h6" noWrap className={classes.name}>
-                    LoRaWAN Settings
-                </Typography>
-                <IconButton onClick={handleRemoveClick}>
-                    <RemoveIcon />
-                </IconButton>
-            </Toolbar>
-            <div className={classes.body}>
-                <FormControl className={classes.shortInput}>
-                    <InputLabel id="lorawan-profile-label">LoRaWAN Profile</InputLabel>
-                    <Select
-                        labelId="lorawan-profile-label"
-                        id="lorawan-profile"
-                        value={meta?.profile||""}
-                        onChange={handleProfileChange}
-                    >
-                        <MenuItem value="WaziDev">WaziDev</MenuItem>
-                        <MenuItem value="">Other</MenuItem>
-                    </Select>
-                </FormControl><br />
-                { meta?.profile === "WaziDev" ? (
-                    <Fragment>
-                        <TextField
-                            id="lorawan-devaddr"
-                            label="DevAddr (Device Address)"
-                            onChange={handleDevAddrChange}
-                            value={meta?.devAddr||""}
-                            className={classes.shortInput} />
-                        <Tooltip title="Autogenerate">
-                            <IconButton size="small" className={classes.button} onClick={generateDevAddr}>
-                                <AddIcon />
-                            </IconButton>
-                        </Tooltip>
-                        <br />
-                        <TextField
-                            id="lorawan-nwskey"
-                            label="NwkSKey (Network Session Key)"
-                            onChange={handleNwkSKeyChange}
-                            value={meta?.nwkSEncKey||""}
-                            className={classes.longInput}/>
-                        <Tooltip title="Autogenerate">
-                            <IconButton size="small" className={classes.button} onClick={generateKeys}>
-                                <AddIcon />
-                            </IconButton>
-                        </Tooltip>
-                        <br />
-                        <TextField
-                            id="lorawan-appkey"
-                            label="AppKey (App Key)"
-                            onChange={handleAppKeyChange}
-                            value={meta?.appSKey||""}
-                            className={classes.longInput}/>
-                    </Fragment>
-                ): null }
-            </div>
-            <Grow in={hasUnsavedChanges}>
+            <Card className={classes.paper}>
+                <CardHeader avatar={<RouterIcon />}
+                    action={
+                        <IconButton aria-label="remove" onClick={handleRemoveClick}>
+                            <RemoveIcon />
+                        </IconButton>
+                    }
+                    title="LoRaWAN Settings"
+                />
+                <CardContent>
+                    <FormGroup>
+                        <FormControl className={classes.shortInput}>
+                            <InputLabel id="lorawan-profile-label">LoRaWAN Profile</InputLabel>
+                            <Select
+                                labelId="lorawan-profile-label"
+                                id="lorawan-profile"
+                                value={newMeta?.profile || meta?.profile || ""}
+                                onChange={handleProfileChange}
+                            >
+                                <MenuItem value="WaziDev">WaziDev</MenuItem>
+                                <MenuItem value="Other">Other</MenuItem>
+                            </Select>
+                        </FormControl><br />
+                        {(newMeta?.profile || meta?.profile) === "WaziDev" ? (
+                            <Fragment>
+                                <FormControl>
+                                    <InputLabel htmlFor="lorawan-devaddr">DevAddr (Device Address)</InputLabel>
+                                    <Input
+                                        id="lorawan-devaddr"
+                                        onChange={handleDevAddrChange}
+                                        value={newMeta?.devAddr || meta?.devAddr || ""}
+                                        className={classes.shortInput}
+                                        endAdornment={
+                                            <InputAdornment position="end">
+                                                <Tooltip title="Autogenerate">
+                                                    <IconButton size="small" onClick={generateDevAddr}>
+                                                        <AddIcon />
+                                                    </IconButton>
+                                                </Tooltip>
+                                            </InputAdornment>
+                                        }
+                                    />
+                                </FormControl>
+                                <FormControl>
+                                    <InputLabel htmlFor="lorawan-nwskey">NwkSKey (Network Session Key)</InputLabel>
+                                    <Input
+                                        id="lorawan-nwskey"
+                                        onChange={handleNwkSKeyChange}
+                                        value={newMeta?.nwkSEncKey || meta?.nwkSEncKey || ""}
+                                        className={classes.longInput}
+                                        endAdornment={
+                                            <InputAdornment position="end">
+                                                <Tooltip title="Autogenerate">
+                                                    <IconButton size="small" onClick={generateKeys}>
+                                                        <AddIcon />
+                                                    </IconButton>
+                                                </Tooltip>
+                                            </InputAdornment>
+                                        }
+                                    />
+                                </FormControl>
+                                <TextField
+                                    id="lorawan-appkey"
+                                    label="AppKey (App Key)"
+                                    onChange={handleAppKeyChange}
+                                    value={newMeta?.appSKey || meta?.appSKey || ""}
+                                    className={classes.longInput} />
+                            </Fragment>
+                        ) : (
+                            <TextField
+                                id="lorawan-deveui"
+                                label="Device EUI"
+                                onChange={handleDevEUIChange}
+                                value={newMeta?.devEUI || meta?.devEUI || ""}
+                                className={classes.longInput} />
+                        )}
+                    </FormGroup>
+                </CardContent>
                 <CardActions className={classes.footer}>
-                    <Button
-                        startIcon={<SaveIcon />}
-                        onClick={saveChanges}
-                    >
-                        Save
-                    </Button>
+                    <Grow in={hasUnsavedChanges}>
+                        <Button
+                            className={classes.cardBtn}
+                            variant="contained"
+                            color="primary"
+                            onClick={submitChanges}
+                            startIcon={<SaveIcon />}
+                        >
+                            Save
+                            </Button>
+                    </Grow>
+                    <Grow in={hasUnsavedChanges} timeout={({ enter: 500, exit: 200 })}>
+                        <Button
+                            className={classes.cardBtn}
+                            onClick={resetChanges}
+                        >
+                            Reset
+                            </Button>
+                    </Grow>
                 </CardActions>
-            </Grow>
-        </Paper>
-        </Grow>
+            </Card>
         </div></div>
     );
 });

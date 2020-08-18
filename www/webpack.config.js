@@ -6,7 +6,7 @@ module.exports = {
 	devtool: "source-map",
 
 	resolve: {
-		extensions: [".ts", ".tsx", ".scss", ".css", ".js"]
+		extensions: [".ts", ".tsx", ".js"]
 	},
 
 	entry: ["./src/hook.tsx"],
@@ -19,11 +19,6 @@ module.exports = {
 				test: /\.ts(x?)$/,
 				exclude: /node_modules/,
 				use: "ts-loader"
-			},
-			{
-				test: /\.s[ac]ss$/i,
-				use: ["style-loader", "css-loader", "sass-loader"],
-				exclude: /node_modules/
 			},
 			{
 				test: /\.woff(2)?(\?v=[0-9]\.[0-9]\.[0-9])?$/,
