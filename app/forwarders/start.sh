@@ -43,8 +43,8 @@ cd /root/single_chan_pkt_fwd/ && ./single_chan_pkt_fwd
 # for the selection or just remove the latest option
 exit 2
 
-# Congduc's forwarder (blocking)
-echo "\n\n============================\n"
-echo "Initiating the single-channel Congduc's Lora packet forwarder..."
-echo "\n\n============================\n\n"
-cd /root/single_congduc_pkt_fwd/ && ./single_congduc_pkt_fwd -r sx127x
+# # Congduc's forwarder (blocking)
+# echo "\n\n============================\n"
+# echo "Initiating the single-channel Congduc's Lora packet forwarder..."
+# echo "\n\n============================\n\n"
+# cd /root/single_congduc_pkt_fwd/ && ./single_congduc_pkt_fwd -r sx127x
