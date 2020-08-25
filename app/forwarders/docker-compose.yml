@@ -1,0 +1,23 @@
+version: "3"
+
+## This file is used only for test stuff, 
+## not really needed for the real app
+
+services:
+  gholi:
+    container_name: gholi
+    image: waziup/gholi.test
+    build:
+      context: ./
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "200k"
+        max-file: "10"
+    restart: always
+    volumes:
+      - .:/root/app
+      - /var/run/dbus:/var/run/dbus
+      - /sys/class/gpio:/sys/class/gpio
+      - /dev:/dev
+    privileged: true

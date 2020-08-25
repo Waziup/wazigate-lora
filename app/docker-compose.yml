@@ -4,8 +4,7 @@ services:
   wazigate-lora:
     container_name: waziup.wazigate-lora
     image: waziup/wazigate-lora
-    build:
-      context: ../
+    # build:
     #   context: ./wazigate-lora
     logging:
       driver: "json-file"
@@ -28,8 +27,8 @@ services:
   chirpstack-network-server:
     container_name: waziup.wazigate-lora.chirpstack-network-server
     image: waziup/chirpstack-network-server:3.8.0
-    build:
-      context: ./chirpstack-network-server
+    # build:
+    #   context: ./chirpstack-network-server
     depends_on:
       - postgresql
       - redis
@@ -47,8 +46,8 @@ services:
   chirpstack-application-server:
     container_name: waziup.wazigate-lora.chirpstack-application-server
     image: waziup/chirpstack-application-server:3.9.0
-    build:
-      context: ./chirpstack-application-server
+    # build:
+    #   context: ./chirpstack-application-server
     depends_on:
       - postgresql
       - redis
@@ -68,8 +67,8 @@ services:
   chirpstack-gateway-bridge:
     container_name: waziup.wazigate-lora.chirpstack-gateway-bridge
     image: waziup/chirpstack-gateway-bridge:3.7.1
-    build:
-      context: ./chirpstack-gateway-bridge
+    # build:
+    #   context: ./chirpstack-gateway-bridge
     logging:
       driver: "json-file"
       options:
@@ -114,11 +113,11 @@ services:
     labels:
       io.waziup.wazigate.dep: "wazigate-lora"
 
-  single_chan_pkt_fwd:
-    container_name: waziup.wazigate-lora.single_chan_pkt_fwd
-    image: waziup/single_chan_pkt_fwd
+  forwarders:
+    container_name: waziup.wazigate-lora.forwarders
+    image: waziup/wazigate-lora_forwarders
     build:
-      context: ./single_chan_pkt_fwd
+      context: ./forwarders
     logging:
       driver: "json-file"
       options:
@@ -126,13 +125,16 @@ services:
         max-file: "10"
     restart: always
     volumes:
-      - ./conf/single_chan_pkt_fwd:/etc/single_chan_pkt_fwd
+      - ./forwarders/conf/single_chan_pkt_fwd/global_conf.json:/root/single_chan_pkt_fwd/global_conf.json
+      - ./forwarders/conf/multi_chan_pkt_fwd/global_conf.json:/root/multi_chan_pkt_fwd/global_conf.json
+      # - ./forwarders/conf/single_congduc_pkt_fwd/global_conf.json:/root/single_congduc_pkt_fwd/global_conf.json
       - /var/run/dbus:/var/run/dbus
       - /sys/class/gpio:/sys/class/gpio
       - /dev:/dev
     privileged: true
     labels:
       io.waziup.wazigate.dep: "wazigate-lora"
+    # entrypoint: "tail -f /dev/null"
 
 volumes:
   postgresqldata:
