@@ -120,6 +120,7 @@ services:
     image: waziup/wazigate-lora-forwarders
     build:
       context: ./forwarders
+      # dockerfile: Dockerfile-dev
     logging:
       driver: "json-file"
       options:
@@ -127,6 +128,7 @@ services:
         max-file: "10"
     restart: always
     volumes:
+      - ./forwarders:/root/app
       - ./forwarders/conf/single_chan_pkt_fwd/global_conf.json:/root/single_chan_pkt_fwd/global_conf.json
       - ./forwarders/conf/multi_chan_pkt_fwd/global_conf.json:/root/multi_chan_pkt_fwd/global_conf.json
       # - ./forwarders/conf/single_congduc_pkt_fwd/global_conf.json:/root/single_congduc_pkt_fwd/global_conf.json

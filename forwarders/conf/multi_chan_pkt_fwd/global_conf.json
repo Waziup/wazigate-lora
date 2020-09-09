@@ -5,23 +5,11 @@
         "lbt_cfg": {
             "enable": false,
             "rssi_target": -80, /* dBm */
-            "chan_cfg": [ /* 8 channels maximum */
-                {
-                    "freq_hz": 867100000,
-                    "scan_time_us": 128
-                },
-                {
-                    "freq_hz": 867300000,
-                    "scan_time_us": 5000
-                },
-                {
-                    "freq_hz": 867500000,
-                    "scan_time_us": 128
-                },
-                {
-                    "freq_hz": 869525000,
-                    "scan_time_us": 128
-                }
+            "chan_cfg":[ /* 8 channels maximum */
+                { "freq_hz": 867100000, "scan_time_us": 128 },
+                { "freq_hz": 867300000, "scan_time_us": 5000 },
+                { "freq_hz": 867500000, "scan_time_us": 128 },
+                { "freq_hz": 869525000, "scan_time_us": 128 }
             ],
             "sx127x_rssi_offset": -4 /* dB */
         },
@@ -220,12 +208,13 @@
             "dig_gain": 0
         }
     },
+
     "gateway_conf": {
-        "gateway_ID": "",
+        "gateway_ID": "dca632609cc6056e",
         /* change with default server address/ports, or overwrite in local_conf.json */
-        "server_address": "chirpstack-gateway-bridge",
-        "serv_port_up": 1700,
-        "serv_port_down": 1700,
+        "server_address": "localhost",
+        "serv_port_up": 1680,
+        "serv_port_down": 1680,
         /* adjust the following parameters for your network */
         "keepalive_interval": 10,
         "stat_interval": 30,
@@ -236,3 +225,4 @@
         "forward_crc_disabled": false
     }
 }
+

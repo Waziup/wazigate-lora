@@ -48,7 +48,8 @@ echo "0" > /sys/class/gpio/gpio$RSTPIN/value
 echo -e "Done\nLaunching the forwarder..."
 sleep 2
 
-cd /root/multi_chan_pkt_fwd/ && ./lora_pkt_fwd
+cd /root/multi_chan_pkt_fwd/
+./lora_pkt_fwd
 
 #-------------------------------------------------------#
 
@@ -56,7 +57,32 @@ cd /root/multi_chan_pkt_fwd/ && ./lora_pkt_fwd
 echo -e "\n\n============================\n"
 echo -e "FAILED, switching to Single-channel Lora packet forwarder."
 echo -e "\n============================\n\n"
-cd /root/single_chan_pkt_fwd/ && ./single_chan_pkt_fwd
+
+
+echo -e "Restarting the CE0 pin..."
+CSPIN=8
+echo "$CSPIN" > /sys/class/gpio/export
+sleep 1
+echo "out" > /sys/class/gpio/gpio$CSPIN/direction
+echo "0" > /sys/class/gpio/gpio$CSPIN/value
+sleep 1
+echo "1" > /sys/class/gpio/gpio$CSPIN/value
+echo -e "Done\n"
+sleep 1
+
+echo -e "Restarting the RFM95x Module..."
+RSTPIN=17
+echo "$RSTPIN" > /sys/class/gpio/export
+sleep 1
+echo "out" > /sys/class/gpio/gpio$RSTPIN/direction
+echo "1" > /sys/class/gpio/gpio$RSTPIN/value
+sleep 1
+echo "0" > /sys/class/gpio/gpio$RSTPIN/value
+echo -e "Done\nLaunching the forwarder..."
+sleep 2
+
+cd /root/single_chan_pkt_fwd/
+./single_chan_pkt_fwd
 
 # In future we might need to have some sort of configuration 
 # for the selection or just remove the latest option
