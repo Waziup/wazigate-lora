@@ -75,11 +75,11 @@ RSTPIN=17
 echo "$RSTPIN" > /sys/class/gpio/export
 sleep 1
 echo "out" > /sys/class/gpio/gpio$RSTPIN/direction
-echo "1" > /sys/class/gpio/gpio$RSTPIN/value
-sleep 1
 echo "0" > /sys/class/gpio/gpio$RSTPIN/value
+sleep 0.0001
+echo "1" > /sys/class/gpio/gpio$RSTPIN/value
 echo -e "Done\nLaunching the forwarder..."
-sleep 2
+sleep 1
 
 cd /root/single_chan_pkt_fwd/
 ./single_chan_pkt_fwd
