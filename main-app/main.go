@@ -49,7 +49,7 @@ func main() {
 		id, err := Wazigate.GetID()
 		if err == nil {
 			log.Printf("Gateway ID: %s", id)
-			config.Gateway.Id = id
+			// config.Gateway.Id = id
 			config.Gateway.Name = "LocalWazigate_" + id // We need it apparently CS fails to create a GW if there is already one with the same name
 			if err := writeConfig(); err != nil {
 				panic(fmt.Errorf("can not write 'chirpstack.json': %v", err))
