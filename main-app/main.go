@@ -1,3 +1,15 @@
+// This service creates a bridge between Chirpstack and Wazigate.
+// Every Wazigate Device might implement 'lorawan' metadata that will make this service create a
+// a identical device in Chirpstack. The metadata should look like this:
+// {
+//   "lorawan": {
+//      "devEUI": "...",
+//      "profile": "WaziDev",
+//      "devAddr": "...",
+//      "appSKey": "...",
+//      "nwkSEncKey": "...",
+//    }
+// }
 package main
 
 import (
@@ -49,6 +61,8 @@ func main() {
 		id, err := Wazigate.GetID()
 		if err == nil {
 			log.Printf("Gateway ID: %s", id)
+			// Chirpstack requires a 8-Byte Gateway Id, but the Wazigate Id might have a different length (usually a 6-Byte MAC addr).
+			// By commenting the following line, the default Id from chirpsstack.json remains unchanged.
 			// config.Gateway.Id = id
 			config.Gateway.Name = "LocalWazigate_" + id // We need it apparently CS fails to create a GW if there is already one with the same name
 			if err := writeConfig(); err != nil {

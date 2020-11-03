@@ -255,6 +255,7 @@ func setDeviceProfileWaziDev(devEUI string, id string) error {
 				Description:     fmt.Sprintf("Automatically created for Waziup device %q.\nDO NOT DELETE!", id),
 				DeviceProfileId: deviceProfileId,
 				ApplicationId:   config.Application.Id,
+				SkipFCntCheck:   true,
 			},
 		})
 		if err == nil {
@@ -278,6 +279,7 @@ func setDeviceProfileWaziDev(devEUI string, id string) error {
 			DeviceProfileId: deviceProfileId,
 			Name:            resp.Device.Name,
 			Description:     resp.Device.Description,
+			SkipFCntCheck:   true,
 		},
 	})
 	if err == nil {
