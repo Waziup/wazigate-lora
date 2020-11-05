@@ -3,11 +3,11 @@
 // a identical device in Chirpstack. The metadata should look like this:
 // {
 //   "lorawan": {
-//      "devEUI": "...",
+//      "devEUI": "AA555A0026011d87",
 //      "profile": "WaziDev",
-//      "devAddr": "...",
-//      "appSKey": "...",
-//      "nwkSEncKey": "...",
+//      "devAddr": "26011d87",
+//      "appSKey": "23158d3bbc31e6af670d195b5aed5525",
+//      "nwkSEncKey": "d83cb057cebd2c43e21f4cde01c19ae1",
 //    }
 // }
 package main
@@ -278,20 +278,6 @@ func serve() error {
 								}
 							}
 						}
-
-						// for key, value := range values {
-						// 	path := "/devices/" + eui + "/sensors/" + key + "/value"
-						// 	resp, err := post(path, value)
-						// 	if err != nil {
-						// 		log.Printf("Err Can nor post to %s: %v", path, err)
-						// 	} else if !isOK(resp.StatusCode) {
-						// 		body, _ := ioutil.ReadAll(resp.Body)
-						// 		log.Printf("Err Edge API %s: %d %s", path, resp.StatusCode, resp.Status)
-						// 		log.Printf("%s", body)
-						// 	} else {
-						// 		log.Printf("Uploaded value to %s.", path)
-						// 	}
-						// }
 					} else {
 						log.Printf("Err No LPP Data: %v\n%v", err, objJSON)
 					}
@@ -426,14 +412,14 @@ func initDevice() {
 				log.Printf("Err Device %s has no lorawan meta?!?!", device.ID)
 				continue
 			}
-			devEUIStr, err := meta.Get("DevEUI").String()
+			devEUIStr, err := meta.Get("devEUI").String()
 			if err != nil {
-				log.Printf("Err Device %s DevEUI:", err)
+				log.Printf("Err Device %s DevEUI: %v", device.ID, err)
 				continue
 			}
 			devEUI, err := strconv.ParseUint(devEUIStr, 16, 64)
 			if err != nil {
-				log.Printf("Err Device %s DevEUI:", err)
+				log.Printf("Err Device %s DevEUI: %v", device.ID, err)
 				continue
 			}
 			devEUIs[devEUI] = device.ID

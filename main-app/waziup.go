@@ -112,10 +112,10 @@ var jsonContentTypeRegexp = regexp.MustCompile("^application/json(;|$)")
 // Get queries an API endpoint to read data.
 func (w *Waziup) Get(res string, o interface{}) error {
 	resp := fetch.Fetch(w.ToURL(res), nil)
-	log.Printf("fetch: %d %s: %s", resp.Status, resp.StatusText, res)
+	log.Printf("GET %s: %d %s", res, resp.Status, resp.StatusText)
 	if !resp.OK {
 		text, _ := resp.Text()
-		return fmt.Errorf("fetch: %d %s:\n%s", resp.Status, resp.StatusText, text)
+		return fmt.Errorf("fetch: %s", resp.Status, resp.StatusText, text)
 	}
 	contentType := resp.Headers.Get("Content-Type")
 	if o == nil {
@@ -164,6 +164,7 @@ func (w *Waziup) Set(res string, i interface{}, o interface{}) error {
 			"Content-Type": []string{"application/json; charset=utf-8"},
 		},
 	})
+	log.Printf("POST %s: %d %s", res, resp.Status, resp.StatusText)
 	if !resp.OK {
 		text, _ := resp.Text()
 		return &Error{
@@ -202,17 +203,11 @@ func (w *Waziup) GetID() (id string, err error) {
 
 // AddSensorValue uploads a new sensor value to the Waziup Cloud or Gateway.
 func (w *Waziup) AddSensorValue(deviceID string, sensorID string, value interface{}) error {
-	if deviceID == "" {
-		return w.Set("devices/"+deviceID+"/sensors/"+sensorID+"/value", value, nil)
-	}
-	return w.Set("sensors/"+sensorID+"/value", value, nil)
+	return w.Set("devices/"+deviceID+"/sensors/"+sensorID+"/value", value, nil)
 }
 
 func (w *Waziup) AddSensor(deviceID string, sensor *Sensor) error {
-	if deviceID == "" {
-		return w.Set("devices/"+deviceID+"/sensors", sensor, &sensor.ID)
-	}
-	return w.Set("sensors", sensor, &sensor.ID)
+	return w.Set("devices/"+deviceID+"/sensors", sensor, &sensor.ID)
 }
 
 // GetDevices queries all devices.
