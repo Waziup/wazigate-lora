@@ -2,8 +2,11 @@ FROM golang:buster AS development
 
 # We need to use Buster as Alpine removed `qsort` lib that is used by the forwarder
 
+# Building the multi chan packet forwarder for RAK2245
 RUN git clone https://github.com/Lora-net/lora_gateway \
     && git clone https://github.com/Lora-net/packet_forwarder multi_chan_pkt_fwd \
+    # lowering the SPI speed for more reliability
+    && sed -i -- 's/SPI_SPEED.*8000000/SPI_SPEED 1000000/g' ./lora_gateway/libloragw/src/loragw_spi.native.c \
     && cd multi_chan_pkt_fwd \
     && ./compile.sh \
     && mkdir -p /build \
