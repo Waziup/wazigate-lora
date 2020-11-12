@@ -86,10 +86,22 @@ cd /root/single_chan_pkt_fwd/
 
 # In future we might need to have some sort of configuration 
 # for the selection or just remove the latest option
-exit 2
 
 # # Congduc's forwarder (blocking)
 # echo -e "\n\n============================\n"
 # echo -e "Initiating the single-channel Congduc's Lora packet forwarder..."
 # echo -e "\n\n============================\n\n"
 # cd /root/single_congduc_pkt_fwd/ && ./single_congduc_pkt_fwd -r sx127x
+
+
+#---------------------------------------------#
+
+# LoRaWAN HT-M01
+echo -e "\n\n============================\n"
+echo -e "Initiating the HT-M01 Lora packet forwarder..."
+echo -e "\n============================\n\n"
+
+cd /root/picoGW_pkt_fwd/
+./lora_pkt_fwd
+
+exit 2
