@@ -105,4 +105,5 @@ echo -e "\n============================\n\n"
 cd /root/picoGW_pkt_fwd/
 ./lora_pkt_fwd
 
+echo -e "All forwarders failed, exiting." 
 exit 2
