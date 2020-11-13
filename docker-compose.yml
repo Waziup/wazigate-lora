@@ -126,6 +126,7 @@ services:
         max-size: "200k"
         max-file: "10"
     restart: always
+    tty: true
     volumes:
       - ./forwarders:/root/app
       - ./forwarders/conf/single_chan_pkt_fwd/global_conf.json:/root/single_chan_pkt_fwd/global_conf.json
