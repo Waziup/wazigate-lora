@@ -2,24 +2,8 @@
 # This file initiates the LoRa packet forwarders in a fail-switch manner in order to 
 # match with the hardware installed on the pi
 
-echo -e "Setting the Gateway ID..."
 GWID=$(curl -s http://wazigate-edge/device/id | tr -d '"')
 echo -e "Gateway ID is: ${GWID}"
-
-cfgFiles=("/root/multi_chan_pkt_fwd/global_conf.json" "/root/multi_chan_pkt_fwd/local_conf.json" "/root/single_chan_pkt_fwd/global_conf.json" "/root/single_chan_pkt_fwd/local_conf.json")
-
-#mkdir -p tmp
-#for f in "${cfgFiles[@]}"
-#do
-#    rm -f ./tmp/*
-#    cp $f ./tmp/test.json
-#    sed -i 's/\(^\s*"gateway_ID":\s*"\).*"\s*\(,\?\).*$/\1'${GWID}'"\2/' ./tmp/test.json
-#    cp -f ./tmp/test.json $f
-#    echo -e "[ $f ]" "Done"
-#done
-
-pwd
-find
 
 #---------------------------------------------#
 
@@ -52,9 +36,10 @@ echo -e "Done\nLaunching the forwarder..."
 sleep 2
 
 cd spi_multi_chan/
+#Setting up config files
 ln -s ~/conf/multi_chan_pkt_fwd/global_conf.json
-ln -s ~/conf/multi_chan_pkt_fwd/local_conf.json
-ls -la
+echo "{\"gateway_conf\": {\"gateway_ID\": \"${GWID}\"}}" > local_conf.json
+# launch the concentrator
 ./lora_pkt_fwd
 
 #-------------------------------------------------------#
@@ -89,6 +74,7 @@ sleep 1
 
 cd single_chan/
 ln -s ~/conf/single_chan_pkt_fwd/global_conf.json
+echo "{\"gateway_conf\": {\"gateway_ID\": \"${GWID}\"}}" > local_conf.json
 ./lora_pkt_fwd
 
 # In future we might need to have some sort of configuration 
@@ -110,7 +96,7 @@ echo -e "\n============================\n\n"
 
 cd usb_multi_chan/
 ln -s ~/conf/multi_chan_pkt_fwd/global_conf.json
-ln -s ~/conf/multi_chan_pkt_fwd/local_conf.json
+echo "{\"gateway_conf\": {\"gateway_ID\": \"${GWID}\"}}" > local_conf.json
 ./lora_pkt_fwd
 
 echo -e "All forwarders failed, exiting." 
