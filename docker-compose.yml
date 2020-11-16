@@ -135,6 +135,8 @@ services:
       - /sys/class/gpio:/sys/class/gpio
       - /dev:/dev
     privileged: true
+    stdin_open: true
+    tty: true
     labels:
       io.waziup.wazigate.dep: "wazigate-lora"
     # entrypoint: "tail -f /dev/null"
