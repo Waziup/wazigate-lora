@@ -53,12 +53,12 @@ echo -e "Initiating the SPI multi-channel Lora packet forwarder..."
 reset_gpio
 start_forwarder ~/spi_multi_chan/lora_pkt_fwd ~/conf/multi_chan_pkt_fwd/global_conf.json
 
-echo -e "Initiating the USB multi-channel Lora packet forwarder..."
-start_forwarder ~/usb_multi_chan/lora_pkt_fwd ~/conf/multi_chan_pkt_fwd/global_conf.json
-
 echo -e "Initiating the single-channel Lora packet forwarder..."
 reset_gpio
 start_forwarder ~/single_chan/lora_pkt_fwd ~/conf/single_chan_pkt_fwd/global_conf.json
+
+echo -e "Initiating the USB multi-channel Lora packet forwarder..."
+start_forwarder ~/usb_multi_chan/lora_pkt_fwd ~/conf/multi_chan_pkt_fwd/global_conf.json
 
 echo -e "All forwarders failed, exiting." 
 exit 2
