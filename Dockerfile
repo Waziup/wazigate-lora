@@ -1,12 +1,5 @@
 FROM golang:1.13-alpine AS development
 
-# NOTE: This file has to be in the main folder of the wazigate-lora App 
-# which is one folder up
-# I use symbolic links to keep the updates
-# ln -s ./main-app/Dockerfile-dev Dockerfile-dev
-# ln -s ./main-app/Dockerfile Dockerfile
-
-
 ENV CGO_ENABLED=0
 
 # Copy required files to the zip folder to be compressed
