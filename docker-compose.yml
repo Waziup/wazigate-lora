@@ -127,19 +127,16 @@ services:
         max-file: "10"
     restart: always
     volumes:
-      - ./forwarders:/root/app
-      - ./forwarders/conf/single_chan_pkt_fwd/global_conf.json:/root/single_chan_pkt_fwd/global_conf.json
-      - ./forwarders/conf/multi_chan_pkt_fwd/global_conf.json:/root/multi_chan_pkt_fwd/global_conf.json
-      # - ./forwarders/conf/single_congduc_pkt_fwd/global_conf.json:/root/single_congduc_pkt_fwd/global_conf.json
+      - ./forwarders/conf/:/root/conf
       - /var/run/dbus:/var/run/dbus
       - /sys/class/gpio:/sys/class/gpio
       - /dev:/dev
+    devices:
+      - /dev/ttyACM0
     privileged: true
-    stdin_open: true
     tty: true
     labels:
       io.waziup.wazigate.dep: "wazigate-lora"
-    # entrypoint: "tail -f /dev/null"
 
 volumes:
   postgresqldata:
