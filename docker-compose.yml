@@ -132,12 +132,13 @@ services:
       - /var/run/dbus:/var/run/dbus
       - /sys/class/gpio:/sys/class/gpio
       - /dev:/dev
+    devices:
+      - /dev/ttyACM0
     privileged: true
     stdin_open: true
     tty: true
     labels:
       io.waziup.wazigate.dep: "wazigate-lora"
-    # entrypoint: "tail -f /dev/null"
 
 volumes:
   postgresqldata:
