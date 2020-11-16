@@ -1,4 +1,4 @@
-module github.com/Waziup/wazigate-lora
+module github.com/Waziup/wazigate-lora/app
 
 go 1.13
 

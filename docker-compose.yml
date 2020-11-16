@@ -5,8 +5,7 @@ services:
     container_name: waziup.wazigate-lora
     image: waziup/wazigate-lora
     build:
-      context: ./  # The actual Dockerfile is in ./main-app/ but due to docker limitaitons, we keep a symbolic link to it on the current path
-      # dockerfile: Dockerfile-dev # Does not build the entire thing, used only for dev. Comment it out for production
+      context: ./
     logging:
       driver: "json-file"
       options:

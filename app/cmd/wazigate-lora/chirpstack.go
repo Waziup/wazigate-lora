@@ -54,9 +54,51 @@ func initChirpstack() error {
 	}()
 
 	ctx := context.Background()
-
+	{
+		asOrganizationService := asAPI.NewOrganizationServiceClient(chirpstack)
+		resp, err := asOrganizationService.Get(ctx, &asAPI.GetOrganizationRequest{
+			Id: config.Organization.Id,
+		})
+		if err != nil {
+			if status.Code(err) == codes.NotFound {
+				log.Printf("Organization id %d does not exist !?", config.Organization.Id)
+				config.Organization.Id = 0
+				resp, err := asOrganizationService.Create(ctx, &asAPI.CreateOrganizationRequest{
+					Organization: &config.Organization,
+				})
+				if err != nil {
+					return fmt.Errorf("grpc: can not create organization: %v", err)
+				}
+				config.Organization.Id = resp.Id
+				dirty = true
+				log.Printf("Organization has been recreated. ID: %v", config.Organization.Id)
+				dirty = true
+			} else {
+				return fmt.Errorf("grpc: can not get Organization: %v", err)
+			}
+		} else {
+			log.Printf("Organization %q OK.", resp.Organization.Name)
+		}
+	}
 	{
 		asNetworkServerService := asAPI.NewNetworkServerServiceClient(chirpstack)
+		resp, err := asNetworkServerService.List(ctx, &asAPI.ListNetworkServerRequest{
+			OrganizationId: config.Organization.Id,
+		})
+		if err != nil {
+			return fmt.Errorf("grpc: can not list network-servers: %v", err)
+		}
+		for _, ns := range resp.Result {
+			if ns.Server == config.NetworkServer.Server {
+				if ns.Id != config.NetworkServer.Id {
+					log.Printf("A network-server with the same configuration exists? !?. ID: %v <> %v", config.NetworkServer.Id, ns.Id)
+					config.NetworkServer.Id = ns.Id
+					dirty = true
+				}
+				break
+			}
+		}
+
 		if config.NetworkServer.Id == 0 {
 			resp, err := asNetworkServerService.Create(ctx, &asAPI.CreateNetworkServerRequest{
 				NetworkServer: &config.NetworkServer,
@@ -95,6 +137,24 @@ func initChirpstack() error {
 		asServiceProfileService := asAPI.NewServiceProfileServiceClient(chirpstack)
 		config.ServiceProfile.NetworkServerId = config.NetworkServer.Id
 		config.ServiceProfile.OrganizationId = config.Organization.Id
+
+		resp, err := asServiceProfileService.List(ctx, &asAPI.ListServiceProfileRequest{
+			OrganizationId: config.Organization.Id,
+		})
+		if err != nil {
+			return fmt.Errorf("grpc: can not list service-profile: %v", err)
+		}
+		for _, sp := range resp.Result {
+			if sp.NetworkServerId == config.NetworkServer.Id {
+				if sp.Id != config.ServiceProfile.Id {
+					log.Printf("A  service-profile with the same configuration exists? !?. ID: %v <> %v", config.ServiceProfile.Id, sp.Id)
+					config.ServiceProfile.Id = sp.Id
+					dirty = true
+				}
+				break
+			}
+		}
+
 		if config.ServiceProfile.Id == "" {
 			resp, err := asServiceProfileService.Create(ctx, &asAPI.CreateServiceProfileRequest{
 				ServiceProfile: &config.ServiceProfile,

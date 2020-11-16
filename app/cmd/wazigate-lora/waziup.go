@@ -15,7 +15,7 @@ import (
 	"time"
 
 	"github.com/Waziup/wazigate-edge/mqtt"
-	"github.com/Waziup/wazigate-lora/fetch"
+	"github.com/Waziup/wazigate-lora/app/internal/pkg/fetch"
 )
 
 // Device represents a Waziup Device.
