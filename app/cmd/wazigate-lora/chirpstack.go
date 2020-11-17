@@ -86,7 +86,10 @@ func initChirpstack() error {
 	}
 	{
 		asNetworkServerService := asAPI.NewNetworkServerServiceClient(chirpstack)
-		resp, err := asNetworkServerService.List(ctx, &asAPI.ListNetworkServerRequest{})
+		resp, err := asNetworkServerService.List(ctx, &asAPI.ListNetworkServerRequest{
+			Limit:          1000,
+			OrganizationId: config.Organization.Id,
+		})
 		if err != nil {
 			return fmt.Errorf("grpc: can not list network-servers: %v", err)
 		}
@@ -141,6 +144,7 @@ func initChirpstack() error {
 		config.ServiceProfile.OrganizationId = config.Organization.Id
 
 		resp, err := asServiceProfileService.List(ctx, &asAPI.ListServiceProfileRequest{
+			Limit:          1000,
 			OrganizationId: config.Organization.Id,
 		})
 		if err != nil {
