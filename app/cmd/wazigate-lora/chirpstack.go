@@ -333,7 +333,7 @@ func setDeviceProfileWaziDev(devEUI string, id string) error {
 		return err
 	}
 	if err != nil {
-		log.Printf("Err Can not read Chirpstakc device: %v", err)
+		log.Printf("Err Can not read Chirpstack device: %v", err)
 		return err
 	}
 	if resp.Device.DeviceProfileId == deviceProfileId {

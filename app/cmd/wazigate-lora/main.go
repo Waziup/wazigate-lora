@@ -138,47 +138,7 @@ func serve() error {
 				log.Printf("Err msg: %s", msg.Data)
 				continue
 			}
-			lorawan := meta.Get("lorawan")
-			if !lorawan.Undefined() {
-				log.Println("--- Device Meta")
-				devEUI, err := lorawan.Get("devEUI").String()
-				if err != nil {
-					log.Printf("Err Device %q DevEUI: %v", id, err)
-					continue
-				}
-				devEUIInt64, err := strconv.ParseUint(devEUI, 16, 64)
-				if err != nil {
-					log.Printf("Err Device %q DevEUI: %v", id, err)
-					continue
-				}
-				devEUIs[devEUIInt64] = id
-				log.Printf("DevEUI %s -> Waziup ID %s", devEUI, id)
-				profile, err := lorawan.Get("profile").String()
-				if err != nil {
-					log.Printf("Err Device %q profile: %v", id, err)
-					continue
-				}
-				if profile == "WaziDev" {
-					if err = setDeviceProfileWaziDev(devEUI, id); err == nil {
-						devAddr, err := lorawan.Get("devAddr").String()
-						if err != nil {
-							log.Printf("Warn Device %q not activated: devAddr: %v", id, err)
-							continue
-						}
-						appSKey, err := lorawan.Get("appSKey").String()
-						if err != nil {
-							log.Printf("Warn Device %q not activated: appSKey: %v", id, err)
-							continue
-						}
-						nwkSEncKey, err := lorawan.Get("nwkSEncKey").String()
-						if err != nil {
-							log.Printf("Warn Device %q not activated: nwkSEncKey: %v", id, err)
-							continue
-						}
-						setWaziDevActivation(devEUI, devAddr, nwkSEncKey, appSKey)
-					}
-				}
-			}
+			checkWaziupDevice(id, meta)
 
 			// Topic: gateway/+/event/+
 		} else if len(topic) == 4 && topic[0] == "gateway" {
@@ -344,7 +304,7 @@ func serve() error {
 				log.Printf("Can not marshal message %q: %v", msg.Topic, err)
 				continue
 			}
-			resp, err := http.Post("/api/devices/"+topic[3]+"/queue", "application/json", bytes.NewReader(data))
+			resp, err := http.Post("http://chirpstack-application-server/api/devices/"+topic[3]+"/queue", "application/json", bytes.NewReader(data))
 			if err != nil {
 				log.Printf("Can not post message %q: %v", msg.Topic, err)
 				continue
@@ -407,23 +367,7 @@ func initDevice() {
 
 		for _, device := range devices {
 
-			meta := device.Meta.Get("lorawan")
-			if meta.Undefined() {
-				log.Printf("Err Device %s has no lorawan meta?!?!", device.ID)
-				continue
-			}
-			devEUIStr, err := meta.Get("devEUI").String()
-			if err != nil {
-				log.Printf("Err Device %s DevEUI: %v", device.ID, err)
-				continue
-			}
-			devEUI, err := strconv.ParseUint(devEUIStr, 16, 64)
-			if err != nil {
-				log.Printf("Err Device %s DevEUI: %v", device.ID, err)
-				continue
-			}
-			devEUIs[devEUI] = device.ID
-			log.Printf("DevEUI %016X -> Waziup ID %s", devEUI, device.ID)
+			checkWaziupDevice(device.ID, device.Meta)
 		}
 
 		log.Printf("There are %d LoRaWAN devices.", len(devEUIs))
@@ -452,4 +396,50 @@ func initDevice() {
 		// setMeta(meta.WazigateLora)
 		break
 	}
+}
+
+func checkWaziupDevice(id string, meta Meta) error {
+
+	lorawan := meta.Get("lorawan")
+	if lorawan.Undefined() {
+		return nil
+	}
+	devEUI, err := lorawan.Get("devEUI").String()
+	if err != nil {
+		log.Printf("Err Device %q DevEUI: %v", id, err)
+		return nil
+	}
+	devEUIInt64, err := strconv.ParseUint(devEUI, 16, 64)
+	if err != nil {
+		log.Printf("Err Device %q DevEUI: %v", id, err)
+		return nil
+	}
+	devEUIs[devEUIInt64] = id
+	log.Printf("DevEUI %s -> Waziup ID %s", devEUI, id)
+	profile, err := lorawan.Get("profile").String()
+	if err != nil {
+		log.Printf("Err Device %q profile: %v", id, err)
+		return nil
+	}
+	if profile == "WaziDev" {
+		if err = setDeviceProfileWaziDev(devEUI, id); err == nil {
+			devAddr, err := lorawan.Get("devAddr").String()
+			if err != nil {
+				log.Printf("Warn Device %q not activated: devAddr: %v", id, err)
+				return nil
+			}
+			appSKey, err := lorawan.Get("appSKey").String()
+			if err != nil {
+				log.Printf("Warn Device %q not activated: appSKey: %v", id, err)
+				return nil
+			}
+			nwkSEncKey, err := lorawan.Get("nwkSEncKey").String()
+			if err != nil {
+				log.Printf("Warn Device %q not activated: nwkSEncKey: %v", id, err)
+				return nil
+			}
+			setWaziDevActivation(devEUI, devAddr, nwkSEncKey, appSKey)
+		}
+	}
+	return nil
 }
