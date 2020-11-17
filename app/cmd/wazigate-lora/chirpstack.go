@@ -198,6 +198,7 @@ func initChirpstack() error {
 	}
 	{
 		asGatewayService := asAPI.NewGatewayServiceClient(chirpstack)
+		config.Gateway.OrganizationId = config.Organization.Id
 		resp, err := asGatewayService.Get(ctx, &asAPI.GetGatewayRequest{
 			Id: config.Gateway.Id,
 		})

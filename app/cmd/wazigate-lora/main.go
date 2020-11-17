@@ -186,14 +186,14 @@ func serve() error {
 			// A 'gateway' from CS is just a packet forwarder for Waziup.
 			switch topic[3] {
 			case "stats":
-				var gwStats gw.GatewayStats
-				if err = Unmarshal(msg.Data, &gwStats); err != nil {
-					log.Printf("Err Can not unmarshal message %q: %v", msg.Topic, err)
-					return err
-				}
-				gwID := gwStats.GetGatewayId()
-				gwTime := gwStats.GetTime()
-				log.Printf("Forwarder %s status: %v", gwID, gwTime)
+				// var gwStats gw.GatewayStats
+				// if err = Unmarshal(msg.Data, &gwStats); err != nil {
+				// 	log.Printf("Err Can not unmarshal message %q: %v", msg.Topic, err)
+				// 	return err
+				// }
+				// gwID := gwStats.GetGatewayId()
+				// gwTime := gwStats.GetTime()
+				// log.Printf("Forwarder %s status: %v", gwID, gwTime)
 			case "up":
 				var gwUp gw.UplinkFrame
 				if err = proto.Unmarshal(msg.Data, &gwUp); err != nil {
