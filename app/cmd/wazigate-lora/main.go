@@ -304,7 +304,10 @@ func serve() error {
 				log.Printf("Can not marshal message %q: %v", msg.Topic, err)
 				continue
 			}
-			resp, err := http.Post("http://chirpstack-application-server/api/devices/"+topic[3]+"/queue", "application/json", bytes.NewReader(data))
+			req, err := http.NewRequest("POST", "http://chirpstack-application-server:8080/api/devices/"+topic[3]+"/queue", bytes.NewReader(data))
+			req.Header.Set("Content-Type", "application/json")
+			req.Header.Set("Authorization", jwtCredentials.token)
+			resp, err := http.DefaultClient.Do(req)
 			if err != nil {
 				log.Printf("Can not post message %q: %v", msg.Topic, err)
 				continue
