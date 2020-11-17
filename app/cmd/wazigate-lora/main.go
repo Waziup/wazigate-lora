@@ -14,11 +14,11 @@ package main
 
 import (
 	"bytes"
+	"context"
 	"encoding/base64"
 	"encoding/binary"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"log"
 	"net"
 	"net/http"
@@ -291,32 +291,29 @@ func serve() error {
 			// This topic is served by the Wazigate Edge and emits actuator values.
 			// If the actuator belongs to a LoRaWAN device (a device with lorawan metadata)
 			// then we will forward the value as payload to ChirpStack.
-
-			item := asAPI.EnqueueDeviceQueueItemRequest{
+			devEUIInt64, ok := waziupID2devEUI(topic[1])
+			if !ok {
+				log.Printf("Waziup ID %s -> DevEUI ?? (no matching LoRaWAN device)", topic[1])
+				continue
+			}
+			log.Printf("Waziup ID %s -> DevEUI %d", topic[1], devEUIInt64)
+			base64Data := base64.StdEncoding.EncodeToString([]byte(msg.Data))
+			log.Printf("Payload (%s) %s", msg.Data, base64Data)
+			devEUI := strconv.FormatUint(devEUIInt64, 10)
+			ctx := context.Background()
+			asDeviceQueueService := asAPI.NewDeviceQueueServiceClient(chirpstack)
+			resp, err := asDeviceQueueService.Enqueue(ctx, &asAPI.EnqueueDeviceQueueItemRequest{
 				DeviceQueueItem: &asAPI.DeviceQueueItem{
-					DevEui: topic[3],
+					DevEui: devEUI,
 					FPort:  100,
-					Data:   msg.Data,
+					Data:   []byte(base64Data),
 				},
-			}
-			data, err := Marshal(&item)
+			})
 			if err != nil {
-				log.Printf("Can not marshal message %q: %v", msg.Topic, err)
+				log.Printf("Can not enqueue payload: %v", err)
 				continue
 			}
-			req, err := http.NewRequest("POST", "http://chirpstack-application-server:8080/api/devices/"+topic[3]+"/queue", bytes.NewReader(data))
-			req.Header.Set("Content-Type", "application/json")
-			req.Header.Set("Authorization", jwtCredentials.token)
-			resp, err := http.DefaultClient.Do(req)
-			if err != nil {
-				log.Printf("Can not post message %q: %v", msg.Topic, err)
-				continue
-			}
-			if resp.StatusCode < 200 || resp.StatusCode >= 300 {
-				body, _ := ioutil.ReadAll(resp.Body)
-				log.Printf("Can not post message %q: %d %s\n%s", msg.Topic, resp.StatusCode, resp.Status, body)
-				continue
-			}
+			log.Printf("Payload enqueued: FCnt %d", resp.FCnt)
 
 		} else {
 			log.Printf("Unknown MQTT topic %q.", msg.Topic)
@@ -399,6 +396,15 @@ func initDevice() {
 		// setMeta(meta.WazigateLora)
 		break
 	}
+}
+
+func waziupID2devEUI(id string) (uint64, bool) {
+	for devEUI, _id := range devEUIs {
+		if _id == id {
+			return devEUI, true
+		}
+	}
+	return 0, false
 }
 
 func checkWaziupDevice(id string, meta Meta) error {
