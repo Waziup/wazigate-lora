@@ -4,6 +4,8 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"math/rand"
+	"strconv"
 
 	asAPI "github.com/brocaar/chirpstack-api/go/v3/as/external/api"
 	"google.golang.org/grpc"
@@ -62,7 +64,10 @@ func initChirpstack() error {
 		if err != nil {
 			if status.Code(err) == codes.NotFound {
 				log.Printf("Organization id %d does not exist !?", config.Organization.Id)
+
 				config.Organization.Id = 0
+				config.Organization.Name = "wazigate_" + strconv.Itoa(rand.Int())
+				config.Organization.DisplayName = "Local Wazigate"
 				resp, err := asOrganizationService.Create(ctx, &asAPI.CreateOrganizationRequest{
 					Organization: &config.Organization,
 				})
@@ -72,7 +77,6 @@ func initChirpstack() error {
 				config.Organization.Id = resp.Id
 				dirty = true
 				log.Printf("Organization has been recreated. ID: %v", config.Organization.Id)
-				dirty = true
 			} else {
 				return fmt.Errorf("grpc: can not get Organization: %v", err)
 			}
