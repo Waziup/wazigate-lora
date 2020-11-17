@@ -192,15 +192,15 @@ func serve() error {
 					log.Printf("Err Can not unmarshal message %q: %v", msg.Topic, err)
 					return err
 				}
-				eui := binary.BigEndian.Uint64(uplinkEvt.GetDevEui())
+				devEUI := binary.BigEndian.Uint64(uplinkEvt.GetDevEui())
 				data := base64.StdEncoding.EncodeToString(uplinkEvt.GetData())
-				log.Printf("DevEUI %X: %s", eui, data)
+				log.Printf("DevEUI %X: %s", devEUI, data)
 
-				dev := devEUIs[eui]
-				if dev == "" {
-					log.Printf("DevEUI %X: No Waziup device for that EUI!", eui)
+				devID := devEUIs[devEUI]
+				if devID == "" {
+					log.Printf("DevEUI %016X: No Waziup device for that EUI!", devEUI)
 				} else {
-					log.Printf("DevEUI %X -> Waziup ID %s", eui, dev)
+					log.Printf("DevEUI %016X -> Waziup ID %s", devEUI, devID)
 				}
 
 				objJSON := uplinkEvt.GetObjectJson()
@@ -209,15 +209,15 @@ func serve() error {
 					err = json.Unmarshal([]byte(objJSON), &lppData)
 					if err == nil {
 						log.Printf("LPP Data: %+v", lppData)
-						if dev != "" {
+						if devID != "" {
 						LPPDATA:
 							for sensorKind, data := range lppData {
 								for channel, value := range data {
 									sensorID := sensorKind + "_" + channel
-									err := Wazigate.AddSensorValue(dev, sensorID, value)
+									err := Wazigate.AddSensorValue(devID, sensorID, value)
 									if err != nil {
 										if IsNotExist(err) {
-											err := Wazigate.AddSensor(dev, &Sensor{
+											err := Wazigate.AddSensor(devID, &Sensor{
 												ID:    sensorID,
 												Name:  sensorKind + " " + channel,
 												Value: value,
@@ -296,7 +296,7 @@ func serve() error {
 				log.Printf("Waziup ID %s -> DevEUI ?? (no matching LoRaWAN device)", topic[1])
 				continue
 			}
-			log.Printf("Waziup ID %s -> DevEUI %d", topic[1], devEUIInt64)
+			log.Printf("Waziup ID %s -> DevEUI %016X", topic[1], devEUIInt64)
 			base64Data := base64.StdEncoding.EncodeToString([]byte(msg.Data))
 			log.Printf("Payload (%s) %s", msg.Data, base64Data)
 			devEUI := fmt.Sprintf("%016X", devEUIInt64)
