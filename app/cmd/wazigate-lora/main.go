@@ -299,7 +299,7 @@ func serve() error {
 			log.Printf("Waziup ID %s -> DevEUI %d", topic[1], devEUIInt64)
 			base64Data := base64.StdEncoding.EncodeToString([]byte(msg.Data))
 			log.Printf("Payload (%s) %s", msg.Data, base64Data)
-			devEUI := strconv.FormatUint(devEUIInt64, 10)
+			devEUI := fmt.Sprintf("%016X", devEUIInt64)
 			ctx := context.Background()
 			asDeviceQueueService := asAPI.NewDeviceQueueServiceClient(chirpstack)
 			resp, err := asDeviceQueueService.Enqueue(ctx, &asAPI.EnqueueDeviceQueueItemRequest{
