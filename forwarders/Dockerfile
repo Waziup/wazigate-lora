@@ -37,6 +37,7 @@ WORKDIR /root/
 
 # Copying over all executables
 COPY --from=development /opt/waziup/packet_forwarder/lora_pkt_fwd/lora_pkt_fwd        spi_multi_chan/lora_pkt_fwd
+COPY --from=development /opt/waziup/lora_gateway/reset_lgw.sh                         spi_multi_chan/reset_lgw.sh
 COPY --from=development /opt/waziup/single_chan_pkt_fwd/build/single_chan_pkt_fwd     single_chan/lora_pkt_fwd
 COPY --from=development /opt/waziup/picoGW_packet_forwarder/lora_pkt_fwd/lora_pkt_fwd usb_multi_chan/lora_pkt_fwd
 
