@@ -173,6 +173,10 @@ func serve() error {
 				if fskModInfo != nil {
 					log.Printf("Forwarder %X: FSK %.2f MHz, Bitrate: %d, Data: %s", gwid, float64(gwUp.TxInfo.Frequency)/1000000, fskModInfo.Datarate, data)
 				}
+			case "txack":
+				log.Printf("Tx completed.")
+				continue
+
 			case "ack", "exec", "raw":
 				// ignore
 
