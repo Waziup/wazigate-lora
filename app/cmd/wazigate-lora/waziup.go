@@ -112,10 +112,11 @@ var jsonContentTypeRegexp = regexp.MustCompile("^application/json(;|$)")
 // Get queries an API endpoint to read data.
 func (w *Waziup) Get(res string, o interface{}) error {
 	resp := fetch.Fetch(w.ToURL(res), nil)
-	log.Printf("GET %s: %d %s", res, resp.Status, resp.StatusText)
+	log.Printf("GET %d %s %q", resp.Status, res, resp.StatusText)
 	if !resp.OK {
 		text, _ := resp.Text()
-		return fmt.Errorf("fetch: %s", resp.Status, resp.StatusText, text)
+		log.Println(text)
+		return fmt.Errorf("fetch: %s", resp.StatusText)
 	}
 	contentType := resp.Headers.Get("Content-Type")
 	if o == nil {
