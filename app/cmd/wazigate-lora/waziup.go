@@ -271,6 +271,9 @@ func (w *Waziup) Subscribe(topic string) (err error) {
 		return err
 	}
 	_, err = w.MQTTClient.Subscribe(topic, 0)
+	if err != nil {
+		w.DisconnectMQTT()
+	}
 	return err
 }
 
@@ -278,7 +281,11 @@ func (w *Waziup) Message() (*mqtt.Message, error) {
 	if err := w.ConnectMQTT(); err != nil {
 		return nil, err
 	}
-	return w.MQTTClient.Message()
+	msg, err := w.MQTTClient.Message()
+	if err != nil {
+		w.DisconnectMQTT()
+	}
+	return msg, err
 }
 
 ////////////////////////////////////////////////////////////////////////////////
