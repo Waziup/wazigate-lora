@@ -1,7 +1,6 @@
 FROM golang:buster AS development
 
 # We need to use Buster as Alpine removed `qsort` lib that is used by the forwarder
-
    
 # Building the multi chan packet forwarder for RAK2245
 RUN git clone https://github.com/Lora-net/lora_gateway \
@@ -9,12 +8,21 @@ RUN git clone https://github.com/Lora-net/lora_gateway \
     && sed -i -- 's/SPI_SPEED.*8000000/SPI_SPEED 1000000/g' ./lora_gateway/libloragw/src/loragw_spi.native.c \
     && git clone https://github.com/Lora-net/packet_forwarder \
     && cd packet_forwarder \
-    && ./compile.sh
+    && ./compile.sh \
+    && cd .. \
+    && mkdir -p /root \
+    && mkdir -p /root/spi_multi_chan \
+    && cp packet_forwarder/lora_pkt_fwd/lora_pkt_fwd    /root/spi_multi_chan/lora_pkt_fwd \
+    && cp lora_gateway/reset_lgw.sh                     /root/spi_multi_chan/reset_lgw.sh
 
 # Building the single chan packet forwarder for WAziHat
 RUN git clone https://github.com/Waziup/single_chan_pkt_fwd \
     && cd single_chan_pkt_fwd \
-    && go build -o build/single_chan_pkt_fwd .
+    && go build -o build/single_chan_pkt_fwd . \
+    && mkdir -p /root \
+    && mkdir -p /root/single_chan \
+    && cp build/single_chan_pkt_fwd     /root/single_chan/lora_pkt_fwd
+
 
 # Building the multi chan packet forwarder for USB HT-M01
 RUN git clone https://github.com/Lora-net/picoGW_hal.git \
@@ -23,13 +31,11 @@ RUN git clone https://github.com/Lora-net/picoGW_hal.git \
     && cd .. \
     && git clone https://github.com/Lora-net/picoGW_packet_forwarder.git \
     && cd picoGW_packet_forwarder \
-    && make
-    
+    && make \
+    && mkdir -p /root \
+    && mkdir -p /root/usb_multi_chan \
+    && cp lora_pkt_fwd/lora_pkt_fwd /root/usb_multi_chan/lora_pkt_fwd
 
-COPY  packet_forwarder/lora_pkt_fwd/lora_pkt_fwd        /root/spi_multi_chan/lora_pkt_fwd
-COPY  lora_gateway/reset_lgw.sh                         /root/spi_multi_chan/reset_lgw.sh
-COPY  single_chan_pkt_fwd/build/single_chan_pkt_fwd     /root/single_chan/lora_pkt_fwd
-COPY  picoGW_packet_forwarder/lora_pkt_fwd/lora_pkt_fwd /root/usb_multi_chan/lora_pkt_fwd
 COPY ./start.sh /root/
 
 ENTRYPOINT ["tail", "-f", "/dev/null"]
