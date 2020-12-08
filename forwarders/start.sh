@@ -50,17 +50,45 @@ echo -e "Gateway ID is: ${GWID}"
 
 # Trying all concentrators, one at a time
 
+echo -e "\n============================\n"
 echo -e "Initiating the SPI multi-channel Lora packet forwarder..."
-~/spi_multi_chan/reset_lgw.sh start
+echo -e "\n============================\n\n"
+~/spi_multi_chan/reset_lgw.sh start 8
 reset_gpio
 start_forwarder ~/spi_multi_chan/lora_pkt_fwd ~/conf/multi_chan_pkt_fwd/global_conf.json
-~/spi_multi_chan/reset_lgw.sh stop
+~/spi_multi_chan/reset_lgw.sh stop 8
 
+echo -e "\n============================\n"
 echo -e "Initiating the single-channel Lora packet forwarder..."
-reset_gpio
+echo -e "\n============================\n\n"
+
+#reset_gpio
+echo -e "Restarting the CE0 pin..."
+CSPIN=8
+echo "$CSPIN" > /sys/class/gpio/export
+sleep 1
+echo "out" > /sys/class/gpio/gpio$CSPIN/direction
+echo "0" > /sys/class/gpio/gpio$CSPIN/value
+sleep 1
+echo "1" > /sys/class/gpio/gpio$CSPIN/value
+echo -e "Done\n"
+sleep 1
+
+echo -e "Restarting the RFM95x Module..."
+RSTPIN=17
+echo "$RSTPIN" > /sys/class/gpio/export
+sleep 1
+echo "out" > /sys/class/gpio/gpio$RSTPIN/direction
+echo "0" > /sys/class/gpio/gpio$RSTPIN/value
+sleep 0.0001
+echo "1" > /sys/class/gpio/gpio$RSTPIN/value
+echo -e "Done\nLaunching the forwarder..."
+sleep 1
 start_forwarder ~/single_chan/lora_pkt_fwd ~/conf/single_chan_pkt_fwd/global_conf.json
 
+echo -e "\n============================\n"
 echo -e "Initiating the USB multi-channel Lora packet forwarder..."
+echo -e "\n============================\n\n"
 start_forwarder ~/usb_multi_chan/lora_pkt_fwd ~/conf/multi_chan_pkt_fwd/global_conf.json
 
 echo -e "All forwarders failed, exiting." 
