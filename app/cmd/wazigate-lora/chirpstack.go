@@ -6,6 +6,7 @@ import (
 	"log"
 	"math/rand"
 	"strconv"
+	"time"
 
 	asAPI "github.com/brocaar/chirpstack-api/go/v3/as/external/api"
 	"google.golang.org/grpc"
@@ -14,6 +15,8 @@ import (
 )
 
 var chirpstack *grpc.ClientConn
+
+const chirpstackTokenRefeshInterval = 5 * time.Minute
 
 func connectToChirpStack() error {
 	var err error
@@ -30,8 +33,21 @@ func connectToChirpStack() error {
 	if err != nil {
 		return fmt.Errorf("grpc: can not login: %v", err)
 	}
+
 	jwtCredentials.SetToken(resp.Jwt)
 	return nil
+}
+
+func refreshChirpstackToken() {
+	for {
+		time.Sleep(chirpstackTokenRefeshInterval)
+		internalClient := asAPI.NewInternalServiceClient(chirpstack)
+		resp, err := internalClient.Login(context.Background(), &config.Login)
+		if err != nil {
+			log.Fatalf("grpc: can not refresh token: %v", err)
+		}
+		jwtCredentials.SetToken(resp.Jwt)
+	}
 }
 
 func initChirpstack() error {
@@ -40,6 +56,7 @@ func initChirpstack() error {
 		return nil
 	}
 
+	go refreshChirpstackToken()
 	log.Println("--- Init ChirpStack")
 
 	dirty := false
