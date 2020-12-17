@@ -27,7 +27,7 @@ services:
 
   chirpstack-network-server:
     container_name: waziup.wazigate-lora.chirpstack-network-server
-    image: waziup/chirpstack-network-server:3.8.0
+    image: waziup/chirpstack-network-server:3.11.0
     # build:
     #   context: ./chirpstack-network-server
     depends_on:
@@ -46,7 +46,7 @@ services:
 
   chirpstack-application-server:
     container_name: waziup.wazigate-lora.chirpstack-application-server
-    image: waziup/chirpstack-application-server:3.9.0
+    image: waziup/chirpstack-application-server:3.13.2
     # build:
     #   context: ./chirpstack-application-server
     depends_on:
@@ -67,7 +67,7 @@ services:
 
   chirpstack-gateway-bridge:
     container_name: waziup.wazigate-lora.chirpstack-gateway-bridge
-    image: waziup/chirpstack-gateway-bridge:3.7.1
+    image: waziup/chirpstack-gateway-bridge:3.9.2
     # build:
     #   context: ./chirpstack-gateway-bridge
     logging:
