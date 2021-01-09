@@ -126,6 +126,10 @@ services:
         max-size: "200k"
         max-file: "10"
     restart: always
+    environment: 
+      - ENABLE_MULTI_SPI=1
+      - ENABLE_MULTI_USB=1
+      - ENABLE_SINGLE_SPI=1
     volumes:
       - ./forwarders/conf/:/root/conf
       - /var/run/dbus:/var/run/dbus
