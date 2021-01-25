@@ -186,7 +186,7 @@ func serve() error {
 			}
 
 			// Topic: application/+/device/+/event/+
-		} else if len(topic) == 5 && topic[0] == "application" && topic[2] == "device" && topic[4] == "event" {
+		} else if len(topic) == 6 && topic[0] == "application" && topic[2] == "device" && topic[4] == "event" {
 			// This topic is served by ChirpStack and emits device data on appllication level.
 			// It gives us the decrypted payload sent by a device.
 			switch topic[5] {
