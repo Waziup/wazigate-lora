@@ -190,7 +190,7 @@ func serve() error {
 			// This topic is served by ChirpStack and emits device data on appllication level.
 			// It gives us the decrypted payload sent by a device.
 			switch topic[5] {
-			case "rx":
+			case "up":
 				var uplinkEvt asIntegr.UplinkEvent
 				if err = Unmarshal(msg.Data, &uplinkEvt); err != nil {
 					log.Printf("Err Can not unmarshal message %q: %v", msg.Topic, err)
