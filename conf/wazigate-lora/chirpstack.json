@@ -1,6 +1,6 @@
 {
     "login": {
-        "username": "admin",
+        "email": "admin",
         "password": "admin"
     },
     "organization": {

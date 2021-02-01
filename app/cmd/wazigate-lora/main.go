@@ -114,7 +114,7 @@ func main() {
 func serve() error {
 
 	Wazigate.Subscribe("gateway/+/event/+")
-	Wazigate.Subscribe("application/+/device/+/+")
+	Wazigate.Subscribe("application/+/device/+/event/+")
 	Wazigate.Subscribe("devices/+/actuators/+/value")
 	Wazigate.Subscribe("devices/+/actuators/+/values")
 	Wazigate.Subscribe("devices/+/meta")
@@ -185,12 +185,12 @@ func serve() error {
 				continue
 			}
 
-			// Topic: application/+/device/+/+
-		} else if len(topic) == 5 && topic[0] == "application" && topic[2] == "device" {
+			// Topic: application/+/device/+/event/+
+		} else if len(topic) == 6 && topic[0] == "application" && topic[2] == "device" && topic[4] == "event" {
 			// This topic is served by ChirpStack and emits device data on appllication level.
 			// It gives us the decrypted payload sent by a device.
-			switch topic[4] {
-			case "rx":
+			switch topic[5] {
+			case "up":
 				var uplinkEvt asIntegr.UplinkEvent
 				if err = Unmarshal(msg.Data, &uplinkEvt); err != nil {
 					log.Printf("Err Can not unmarshal message %q: %v", msg.Topic, err)
