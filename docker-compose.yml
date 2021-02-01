@@ -85,7 +85,9 @@ services:
 
   postgresql:
     container_name: postgresql
-    image: postgres:9.6-alpine
+    image: waziup/wazigate-postgresql
+    # build:
+    #   context: ./postgresql  # Due to some issues we use an older version and keep it in the waziup repo
     logging:
       driver: "json-file"
       options:
