@@ -77,19 +77,24 @@ func (resp *FetchResponse) JSON(data interface{}) error {
 	return nil
 }
 
-func (resp *FetchResponse) Text() (string, error) {
+func (resp *FetchResponse) Bytes() ([]byte, error) {
 	if resp.Body == nil {
-		return "", errNoBody
+		return nil, errNoBody
 	}
 	data, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
 		resp.Body.Close()
-		return "", fmt.Errorf("fetch: %v", err)
+		return nil, fmt.Errorf("fetch: %v", err)
 	}
 	if err := resp.Body.Close(); err != nil {
-		return "", fmt.Errorf("fetch: %v", err)
+		return nil, fmt.Errorf("fetch: %v", err)
 	}
-	return string(data), nil
+	return data, nil
+}
+
+func (resp *FetchResponse) Text() (string, error) {
+	data, err := resp.Bytes()
+	return string(data), err
 }
 
 type Error struct {

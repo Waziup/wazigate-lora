@@ -207,6 +207,38 @@ func (w *Waziup) AddSensorValue(deviceID string, sensorID string, value interfac
 	return w.Set("devices/"+deviceID+"/sensors/"+sensorID+"/value", value, nil)
 }
 
+func (w *Waziup) UnmarshalDevice(deviceID string, data []byte) error {
+	resp := fetch.Fetch(w.ToURL("devices/"+deviceID), &fetch.FetchInit{
+		Method: "POST",
+		Body:   bytes.NewBuffer(data),
+		Headers: http.Header{
+			"Content-Type": []string{"application/octet-stream"},
+		},
+	})
+	text, _ := resp.Text()
+	if !resp.OK {
+		return fmt.Errorf("UnmarshalDevice: Err %d: %s %s", resp.Status, resp.StatusText, text)
+	}
+	if text != "" {
+		log.Printf("UnmarshalDevice: Server says %q", text)
+	}
+	return nil
+}
+
+func (w *Waziup) MarshalDevice(deviceID string) ([]byte, error) {
+	resp := fetch.Fetch(w.ToURL("devices/"+deviceID), &fetch.FetchInit{
+		Method: "GET",
+		Headers: http.Header{
+			"Content-Type": []string{"application/octet-stream"},
+		},
+	})
+	data, _ := resp.Bytes()
+	if !resp.OK {
+		return data, fmt.Errorf("MarshalDevice: Err %d: %s %s", resp.Status, resp.StatusText, string(data))
+	}
+	return data, nil
+}
+
 func (w *Waziup) AddSensor(deviceID string, sensor *Sensor) error {
 	return w.Set("devices/"+deviceID+"/sensors", sensor, &sensor.ID)
 }

@@ -36,6 +36,9 @@ import (
 
 // var mqttAddr = "127.0.0.1"
 // var edgeAddr = "127.0.0.1"
+// var edgeAddr = "127.0.0.1"
+// var edgeAddr = "127.0.0.1"
+// var edgeAddr = "127.0.0.1"
 
 var version string
 var branch string
@@ -205,49 +208,54 @@ func serve() error {
 					log.Printf("DevEUI %016X: No Waziup device for that EUI!", devEUI)
 				} else {
 					log.Printf("DevEUI %016X -> Waziup ID %s", devEUI, devID)
+
+					err = Wazigate.UnmarshalDevice(devID, uplinkEvt.Data)
+					if err != nil {
+						log.Printf("Err Data upload to wazigate-edge failed: %v", err)
+					}
 				}
 
-				objJSON := uplinkEvt.GetObjectJson()
-				if objJSON != "" {
-					var lppData = make(map[string]map[string]interface{})
-					err = json.Unmarshal([]byte(objJSON), &lppData)
-					if err == nil {
-						log.Printf("LPP Data: %+v", lppData)
-						if devID != "" {
-						LPPDATA:
-							for sensorKind, data := range lppData {
-								for channel, value := range data {
-									sensorID := sensorKind + "_" + channel
-									err := Wazigate.AddSensorValue(devID, sensorID, value)
-									if err != nil {
-										if IsNotExist(err) {
-											err := Wazigate.AddSensor(devID, &Sensor{
-												ID:    sensorID,
-												Name:  sensorKind + " " + channel,
-												Value: value,
-												Meta: Meta{
-													"createdBy": "wazigate-lora",
-												},
-											})
-											if err != nil {
-												log.Printf("Err Can not create sensor %q: %v", sensorID, err)
-												continue LPPDATA
-											} else {
-												log.Printf("Sensor %q has been created as it did not exist.", sensorID)
-											}
-										} else {
-											log.Printf("Err Can not create value on sensor %q: %v", sensorID, err)
-										}
-									}
-								}
-							}
-						}
-					} else {
-						log.Printf("Err No LPP Data: %v\n%v", err, objJSON)
-					}
-				} else {
-					log.Printf("Err The payload was not parsed by Chirpstack")
-				}
+				// objJSON := uplinkEvt.GetObjectJson()
+				// if objJSON != "" {
+				// 	var lppData = make(map[string]map[string]interface{})
+				// 	err = json.Unmarshal([]byte(objJSON), &lppData)
+				// 	if err == nil {
+				// 		log.Printf("LPP Data: %+v", lppData)
+				// 		if devID != "" {
+				// 		LPPDATA:
+				// 			for sensorKind, data := range lppData {
+				// 				for channel, value := range data {
+				// 					sensorID := sensorKind + "_" + channel
+				// 					err := Wazigate.AddSensorValue(devID, sensorID, value)
+				// 					if err != nil {
+				// 						if IsNotExist(err) {
+				// 							err := Wazigate.AddSensor(devID, &Sensor{
+				// 								ID:    sensorID,
+				// 								Name:  sensorKind + " " + channel,
+				// 								Value: value,
+				// 								Meta: Meta{
+				// 									"createdBy": "wazigate-lora",
+				// 								},
+				// 							})
+				// 							if err != nil {
+				// 								log.Printf("Err Can not create sensor %q: %v", sensorID, err)
+				// 								continue LPPDATA
+				// 							} else {
+				// 								log.Printf("Sensor %q has been created as it did not exist.", sensorID)
+				// 							}
+				// 						} else {
+				// 							log.Printf("Err Can not create value on sensor %q: %v", sensorID, err)
+				// 						}
+				// 					}
+				// 				}
+				// 			}
+				// 		}
+				// 	} else {
+				// 		log.Printf("Err No LPP Data: %v\n%v", err, objJSON)
+				// 	}
+				// } else {
+				// 	log.Printf("Err The payload was not parsed by Chirpstack")
+				// }
 
 			case "status":
 				var statusEvt asIntegr.StatusEvent
@@ -295,29 +303,48 @@ func serve() error {
 			// This topic is served by the Wazigate Edge and emits actuator values.
 			// If the actuator belongs to a LoRaWAN device (a device with lorawan metadata)
 			// then we will forward the value as payload to ChirpStack.
-			devEUIInt64, ok := waziupID2devEUI(topic[1])
+			devID := topic[1]
+			devEUIInt64, ok := waziupID2devEUI(devID)
 			if !ok {
-				log.Printf("Waziup ID %s -> DevEUI ?? (no matching LoRaWAN device)", topic[1])
+				log.Printf("Waziup ID %s -> DevEUI ?? (no matching LoRaWAN device)", devID)
 				continue
 			}
-			log.Printf("Waziup ID %s -> DevEUI %016X", topic[1], devEUIInt64)
-			base64Data := base64.StdEncoding.EncodeToString([]byte(msg.Data))
-			log.Printf("Payload (%s) %s", msg.Data, base64Data)
+			log.Printf("Waziup ID %s -> DevEUI %016X", devID, devEUIInt64)
+
+			data, err := Wazigate.MarshalDevice(devID)
+			if err != nil {
+				log.Printf("Err Can marshal devie: %v", err)
+				continue
+			}
+			log.Printf("Payload: [%d] %v", len(data), data)
+			base64Data := base64.StdEncoding.EncodeToString([]byte(data))
+			log.Printf("Base64: [%d] %s", len(base64Data), base64Data)
 			devEUI := fmt.Sprintf("%016X", devEUIInt64)
 			ctx := context.Background()
 			asDeviceQueueService := asAPI.NewDeviceQueueServiceClient(chirpstack)
-			resp, err := asDeviceQueueService.Enqueue(ctx, &asAPI.EnqueueDeviceQueueItemRequest{
-				DeviceQueueItem: &asAPI.DeviceQueueItem{
+			{
+				_, err := asDeviceQueueService.Flush(ctx, &asAPI.FlushDeviceQueueRequest{
 					DevEui: devEUI,
-					FPort:  100,
-					Data:   []byte(base64Data),
-				},
-			})
-			if err != nil {
-				log.Printf("Can not enqueue payload: %v", err)
-				continue
+				})
+				if err != nil {
+					log.Printf("Err Can not clear device queue: %v", err)
+					continue
+				}
 			}
-			log.Printf("Payload enqueued: FCnt %d", resp.FCnt)
+			{
+				resp, err := asDeviceQueueService.Enqueue(ctx, &asAPI.EnqueueDeviceQueueItemRequest{
+					DeviceQueueItem: &asAPI.DeviceQueueItem{
+						DevEui: devEUI,
+						FPort:  100,
+						Data:   []byte(base64Data),
+					},
+				})
+				if err != nil {
+					log.Printf("Can not enqueue payload: %v", err)
+					continue
+				}
+				log.Printf("Payload enqueued: FCnt %d", resp.FCnt)
+			}
 
 		} else {
 			log.Printf("Unknown MQTT topic %q.", msg.Topic)
