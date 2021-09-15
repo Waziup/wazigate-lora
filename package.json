@@ -2,7 +2,7 @@
     "name": "wazigate-lora",
     "license": "MIT",
     "description": "LoRAWAN service for Wazigate",
-    "homepage": "https://www.waziup.io/documentation/wazigate/wazigate-lora",
+    "homepage": "https://www.waziup.io/documentation/wazigate/v2/lorawan/",
     "author": {
         "name": "Waziup"
     },
