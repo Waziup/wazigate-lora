@@ -1,2 +1,5 @@
-# The www works without node_modules
+# www works without node_modules
 node_modules
+
+# www dist files
+www/dist
