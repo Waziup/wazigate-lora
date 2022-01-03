@@ -53,7 +53,7 @@ func refreshChirpstackToken() {
 func InitChirpstack() error {
 
 	if err := connectToChirpStack(); err != nil {
-		return nil
+		return err
 	}
 
 	go refreshChirpstackToken()
