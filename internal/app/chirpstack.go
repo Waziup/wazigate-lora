@@ -20,7 +20,7 @@ const chirpstackTokenRefreshInterval = 5 * time.Minute
 
 func connectToChirpStack() error {
 	var err error
-	chirpstack, err = grpc.Dial("chirpstack-application-server:8080",
+	chirpstack, err = grpc.Dial("waziup.wazigate-lora.chirpstack-application-server:8080",
 		grpc.WithBlock(),
 		grpc.WithPerRPCCredentials(jwtCredentials),
 		grpc.WithInsecure())
