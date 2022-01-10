@@ -44,7 +44,7 @@ function start_forwarder {
     ./$(basename "$1")
 }
 
-GWID=$(curl -s http://wazigate-edge/device/id | tr -d '"')
+GWID=$(curl -s http://waziup.wazigate-edge/device/id | tr -d '"')
 echo -e "Gateway ID is: ${GWID}"
 
 # Trying all enabled concentrators, one at a time
