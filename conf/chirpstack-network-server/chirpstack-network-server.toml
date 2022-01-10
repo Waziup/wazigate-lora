@@ -44,7 +44,7 @@ name="EU868"
 #   max_dr=5
 
 [network_server.gateway.backend.mqtt]
-server="tcp://wazigate-edge:1883"
+server="tcp://waziup.wazigate-edge:1883"
 client_id="chirpstack-network-server"
 
 [join_server.default]
