@@ -11,7 +11,7 @@ url="redis://redis:6379"
 marshaler="json"
 
 [application_server.integration.mqtt]
-server="tcp://wazigate-edge:1883"
+server="tcp://waziup.wazigate-edge:1883"
 client_id="chirpstack-application-server"
 
 [application_server.api]
