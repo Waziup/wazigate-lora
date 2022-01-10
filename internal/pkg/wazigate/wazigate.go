@@ -8,7 +8,7 @@ import (
 	"github.com/Waziup/wazigate-lora/internal/pkg/waziup"
 )
 
-var defaultEdgeHost = "wazigate-edge"
+var defaultEdgeHost = "waziup.wazigate-edge"
 
 func getEdgeHost() string {
 	edgeHost := os.Getenv("WAZIGATE_EDGE")
