@@ -54,6 +54,7 @@ function start_forwarder {
 curl --fail http://waziup.wazigate-edge/device/id
 res=$?
 if test "$res" != "0"; then
+   echo "Wazigate-edge cannot be reached, exiting."
    exit 1;
 fi
 
