@@ -2,8 +2,9 @@
 # This file initiates the LoRa packet forwarders in a fail-switch manner in order to 
 # match with the hardware installed on the pi
 
-# function definitions
-
+########################
+# function definitions #
+########################
 
 # reset the concentrator via GPIO pins
 function reset_gpio {
@@ -44,6 +45,19 @@ function start_forwarder {
     ./$(basename "$1")
 }
 
+####################
+# Start forwarders #
+####################
+
+
+# check presence of wazigate-edge
+curl --fail http://waziup.wazigate-edge/device/id
+res=$?
+if test "$res" != "0"; then
+   exit 1;
+fi
+
+# get wazigate id
 GWID=$(curl -s http://waziup.wazigate-edge/device/id | tr -d '"')
 echo -e "Gateway ID is: ${GWID}"
 
