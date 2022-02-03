@@ -39,8 +39,6 @@ function start_forwarder {
     cd $(dirname "$1")
     # Linking global_conf.json
     ln -s $2
-    # Create the local_conf.json with our gateway ID
-    echo "{\"gateway_conf\": {\"gateway_ID\": \"${GWID}\"}}" >> local_conf.json
     # launch the concentrator
     ./$(basename "$1")
 }
@@ -57,10 +55,6 @@ if test "$res" != "0"; then
    echo "Wazigate-edge cannot be reached, exiting."
    exit 1;
 fi
-
-# get wazigate id
-GWID=$(curl -s http://waziup.wazigate-edge/device/id | tr -d '"')
-echo -e "Gateway ID is: ${GWID}"
 
 # Trying all enabled concentrators, one at a time
 
