@@ -116,6 +116,10 @@ if [ "$VAR_ENABLE_MULTI_USB" == "1" ]; then
   echo -e "Initiating the USB multi-channel Lora packet forwarder..."
   echo -e "\n============================\n\n"
   start_forwarder ~/usb_multi_chan/lora_pkt_fwd ~/conf/multi_chan_pkt_fwd/global_conf.json
+  # Workaround: the forwarder hangs on the first start, we need to restart it.
+  sleep 3
+  kill -9 $!
+  start_forwarder ~/usb_multi_chan/lora_pkt_fwd ~/conf/multi_chan_pkt_fwd/global_conf.json
 
 fi
 
