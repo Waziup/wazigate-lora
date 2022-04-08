@@ -1,41 +1,48 @@
-FROM golang:1.13-alpine AS development
+FROM python:2 AS ui
+# pyhton is required to build libsass for node-sass
+# https://github.com/sass/node-sass/issues/3033
+
+# libgnutls30 is required for
+# https://github.com/nodesource/distributions/issues/1266
+RUN apt-get update && apt-get install -y --no-install-recommends curl git libgnutls30
+RUN curl -sL https://deb.nodesource.com/setup_14.x | bash -
+RUN apt-get install -y --no-install-recommends nodejs
+
+COPY www/. /ui
+
+WORKDIR /ui/
+
+RUN npm i && npm run build
+
+################################################################################
+
+
+FROM golang:1.16-alpine AS bin
 
 ENV CGO_ENABLED=0
 
-# Copy required files to the zip folder to be compressed
-COPY ./docker-compose.yml \
-     ./package.json \
-     /zip/
-COPY ./forwarders/conf /zip/forwarders/conf
-COPY ./conf /zip/conf
+COPY . /bin
 
-COPY ./app /app
-
-WORKDIR /app
+WORKDIR /bin
 
 
-RUN apk add --no-cache ca-certificates git zip \
-    && cd /zip/ \
-    && zip -q -r /app/index.zip . \
-    && cd /app \
-    && go build -a -installsuffix cgo -ldflags "-s -w" -o wazigate-lora ./cmd/wazigate-lora
+RUN apk add --no-cache ca-certificates git && \
+    go build -a -installsuffix cgo -ldflags "-s -w" -o wazigate-lora ./cmd/wazigate-lora
 
-ENTRYPOINT ["tail", "-f", "/dev/null"]
+################################################################################
 
 
-#--------------------------------#
-
-
-FROM alpine:latest AS production
+FROM alpine:latest AS app
 
 WORKDIR /root/
 RUN apk --no-cache add ca-certificates curl
 
-COPY --from=development /app/wazigate-lora .
-COPY --from=development /app/index.zip /index.zip
+# copy bin files (the wazigate-lora binary)
+COPY --from=bin /bin/wazigate-lora .
 
-COPY ./www/dist ./www/dist
-COPY ./www/img ./www/img
-COPY ./www/index.html ./www/icon.png ./www/
+# copy UI files (the wazigate-lora UI)
+COPY --from=ui /ui/dist ./www/dist
+COPY --from=ui /ui/img ./www/img
+COPY --from=ui /ui/index.html /ui/icon.png ./www/
 
 ENTRYPOINT ["./wazigate-lora"]

@@ -2,8 +2,9 @@
 # This file initiates the LoRa packet forwarders in a fail-switch manner in order to 
 # match with the hardware installed on the pi
 
-# function definitions
-
+########################
+# function definitions #
+########################
 
 # reset the concentrator via GPIO pins
 function reset_gpio {
@@ -38,14 +39,22 @@ function start_forwarder {
     cd $(dirname "$1")
     # Linking global_conf.json
     ln -s $2
-    # Create the local_conf.json with our gateway ID
-    echo "{\"gateway_conf\": {\"gateway_ID\": \"${GWID}\"}}" >> local_conf.json
     # launch the concentrator
     ./$(basename "$1")
 }
 
-GWID=$(curl -s http://wazigate-edge/device/id | tr -d '"')
-echo -e "Gateway ID is: ${GWID}"
+####################
+# Start forwarders #
+####################
+
+
+# check presence of wazigate-edge
+curl --fail http://waziup.wazigate-edge/device/id
+res=$?
+if test "$res" != "0"; then
+   echo "Wazigate-edge cannot be reached, exiting."
+   exit 1;
+fi
 
 # Trying all enabled concentrators, one at a time
 
@@ -106,7 +115,7 @@ if [ "$VAR_ENABLE_MULTI_USB" == "1" ]; then
   echo -e "\n============================\n"
   echo -e "Initiating the USB multi-channel Lora packet forwarder..."
   echo -e "\n============================\n\n"
-  start_forwarder ~/usb_multi_chan/lora_pkt_fwd ~/conf/multi_chan_pkt_fwd/global_conf.json
+  start_forwarder ~/usb_multi_chan/lora_pkt_fwd ~/conf/multi_chan_pkt_fwd/global_conf.json &
 
 fi
 

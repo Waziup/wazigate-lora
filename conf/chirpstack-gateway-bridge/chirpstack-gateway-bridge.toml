@@ -2,5 +2,5 @@
 # configuration example and documentation.
 
 [integration.mqtt.auth.generic]
-servers=["tcp://wazigate-edge:1883"]
+servers=["tcp://waziup.wazigate-edge:1883"]
 client_id="chirpstack-application-server"
