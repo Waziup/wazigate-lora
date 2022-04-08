@@ -158,7 +158,7 @@ func Serve() error {
 				} else {
 					log.Printf("DevEUI %016X -> Waziup ID %s", devEUI, devID)
 
-					err = Wazigate.UnmarshalDevice(devID, uplinkEvt.Data)
+					err = wazigate.UnmarshalDevice(devID, uplinkEvt.Data)
 					if err != nil {
 						log.Printf("Err Data upload to wazigate-edge failed: %v", err)
 					}
@@ -260,7 +260,7 @@ func Serve() error {
 			}
 			log.Printf("Waziup ID %s -> DevEUI %016X", devID, devEUIInt64)
 
-			data, err := Wazigate.MarshalDevice(devID)
+			data, err := wazigate.MarshalDevice(devID)
 			if err != nil {
 				log.Printf("Err Can marshal devie: %v", err)
 				continue

@@ -60,3 +60,11 @@ func AddSensor(deviceID string, sensor *waziup.Sensor) error {
 func GetDevices(query *waziup.DevicesQuery) (devices []waziup.Device, err error) {
 	return conn.GetDevices(query)
 }
+
+func UnmarshalDevice(deviceID string, data []byte) error {
+	return conn.UnmarshalDevice(deviceID, data)
+}
+
+func MarshalDevice(deviceID string) ([]byte, error) {
+	return conn.MarshalDevice(deviceID)
+}
