@@ -266,8 +266,8 @@ func Serve() error {
 				continue
 			}
 			log.Printf("Payload: [%d] %v", len(data), data)
-			base64Data := base64.StdEncoding.EncodeToString([]byte(data))
-			log.Printf("Base64: [%d] %s", len(base64Data), base64Data)
+			// base64Data := base64.StdEncoding.EncodeToString([]byte(data))
+			// log.Printf("Base64: [%d] %s", len(base64Data), base64Data)
 			devEUI := fmt.Sprintf("%016X", devEUIInt64)
 			ctx := context.Background()
 			asDeviceQueueService := asAPI.NewDeviceQueueServiceClient(chirpstack)
@@ -285,7 +285,7 @@ func Serve() error {
 					DeviceQueueItem: &asAPI.DeviceQueueItem{
 						DevEui: devEUI,
 						FPort:  100,
-						Data:   []byte(base64Data),
+						Data:   data,
 					},
 				})
 				if err != nil {
