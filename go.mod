@@ -1,16 +1,11 @@
 module github.com/Waziup/wazigate-lora
 
-// replace github.com/Waziup/wazigate-rpi/gpio => ../wazigate-rpi/gpio
-
-// replace github.com/Waziup/wazigate-rpi/spi => ../wazigate-rpi/spi
-
-// replace github.com/Waziup/wazigate-edge/mqtt => ../wazigate-edge/mqtt
+go 1.16
 
 require (
-	github.com/Waziup/wazigate-edge/mqtt v0.0.0-20191213091021-e016fed2ef89
-	github.com/Waziup/wazigate-rpi/gpio v0.0.0-20191204155719-329ba73795d3
-	github.com/Waziup/wazigate-rpi/spi v0.0.0-20191204155719-329ba73795d3
-	golang.org/x/sys v0.0.0-20191110163157-d32e6e3b99c4
+	github.com/Waziup/wazigate-edge/mqtt v0.0.0-20200401205703-a020867b3ff2
+	github.com/brocaar/chirpstack-api/go/v3 v3.9.3
+	github.com/golang/protobuf v1.4.3
+	google.golang.org/genproto v0.0.0-20210122163508-8081c04a3579 // indirect
+	google.golang.org/grpc v1.35.0 // indirect
 )
-
-go 1.13

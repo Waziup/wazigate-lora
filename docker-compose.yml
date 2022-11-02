@@ -1,0 +1,154 @@
+version: "3"
+
+services:
+  wazigate-lora:
+    container_name: waziup.wazigate-lora
+    image: waziup/wazigate-lora
+    build:
+      context: ./
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "200k"
+        max-file: "10"
+    restart: always
+    # environment:
+    #   - WAZIGATE_EDGE=wazigate-edge:80
+    depends_on:
+      - chirpstack-network-server
+      - chirpstack-application-server
+      - chirpstack-gateway-bridge
+    volumes:
+      - .:/root/app
+      - ./main-app:/go/src/main-app # Needed for development
+      - /var/run/dbus:/var/run/dbus
+      - /sys/class/gpio:/sys/class/gpio
+      - /dev:/dev
+
+  chirpstack-network-server:
+    container_name: waziup.wazigate-lora.chirpstack-network-server
+    image: waziup/chirpstack-network-server:3.11.0
+    # build:
+    #   context: ./chirpstack-network-server
+    depends_on:
+      - postgresql
+      - redis
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "200k"
+        max-file: "10"
+    restart: always
+    volumes:
+      - ./conf/chirpstack-network-server:/etc/chirpstack-network-server
+    labels:
+      io.waziup.wazigate.dep: "wazigate-lora"
+
+  chirpstack-application-server:
+    container_name: waziup.wazigate-lora.chirpstack-application-server
+    image: waziup/chirpstack-application-server:3.13.2
+    # build:
+    #   context: ./chirpstack-application-server
+    depends_on:
+      - postgresql
+      - redis
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "200k"
+        max-file: "10"
+    restart: always
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./conf/chirpstack-application-server:/etc/chirpstack-application-server
+    labels:
+      io.waziup.wazigate.dep: "wazigate-lora"
+
+  chirpstack-gateway-bridge:
+    container_name: waziup.wazigate-lora.chirpstack-gateway-bridge
+    image: waziup/chirpstack-gateway-bridge:3.9.2
+    # build:
+    #   context: ./chirpstack-gateway-bridge
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "200k"
+        max-file: "10"
+    restart: always
+    ports:
+      - 1700:1700/udp
+    volumes:
+      - ./conf/chirpstack-gateway-bridge:/etc/chirpstack-gateway-bridge
+    labels:
+      io.waziup.wazigate.dep: "wazigate-lora"
+
+  postgresql:
+    container_name: postgresql
+    image: waziup/wazigate-postgresql
+    # build:
+    #   context: ./postgresql  # Due to some issues we use an older version and keep it in the waziup repo
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "200k"
+        max-file: "10"
+    restart: always
+    volumes:
+      - ./conf/postgresql/initdb:/docker-entrypoint-initdb.d
+      - postgresqldata:/var/lib/postgresql/data
+    environment: 
+      - POSTGRES_HOST_AUTH_METHOD=trust
+    labels:
+      io.waziup.wazigate.dep: "wazigate-lora"
+
+  redis:
+    container_name: redis
+    image: redis:5-alpine
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "200k"
+        max-file: "10"
+    restart: always
+    volumes:
+      - redisdata:/data
+    labels:
+      io.waziup.wazigate.dep: "wazigate-lora"
+
+  forwarders:
+    container_name: waziup.wazigate-lora.forwarders
+    image: waziup/wazigate-lora-forwarders
+    build:
+      context: ./forwarders
+      # dockerfile: Dockerfile-dev
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "200k"
+        max-file: "10"
+    restart: always
+    environment: 
+      - ENABLE_MULTI_SPI=1
+      - ENABLE_MULTI_USB=1
+      - ENABLE_SINGLE_SPI=1
+    volumes:
+      - ./forwarders/conf/:/root/conf
+      - /var/run/dbus:/var/run/dbus
+      - /sys/class/gpio:/sys/class/gpio
+      - /dev:/dev
+    devices:
+      - /dev/ttyACM0
+    privileged: true
+    tty: true
+    labels:
+      io.waziup.wazigate.dep: "wazigate-lora"
+
+volumes:
+  postgresqldata:
+  redisdata:
+
+networks:
+  default:
+    external:
+      name: wazigate

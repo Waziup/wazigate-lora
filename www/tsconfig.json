@@ -1,6 +1,16 @@
 {
     "compilerOptions": {
-        "moduleResolution": "node",
-        "target": "es6"
-    }
+        "outDir": "./dist/",
+        "sourceMap": true,
+        "noImplicitAny": true,
+        "resolveJsonModule": true,
+        "esModuleInterop": true,
+        "module": "commonjs",
+        "target": "es6",
+        "jsx": "react",
+        "lib": [
+            "dom",
+            "esnext"
+        ]
+    },
 }
