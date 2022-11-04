@@ -61,6 +61,17 @@ func InitChirpstack() error {
 
 	dirty := false
 
+	defer func() {
+		if dirty {
+			fmt.Println("The ChirpStack data changed, see 'chirpstack.json'.")
+			if err := WriteConfig(); err != nil {
+				panic(fmt.Errorf("can not write 'chirpstack.json': %v", err))
+			}
+		} else {
+			fmt.Println("The ChirpStack data has not changed.")
+		}
+	}()
+
 	ctx := context.Background()
 	{
 		asOrganizationService := asAPI.NewOrganizationServiceClient(chirpstack)
@@ -231,6 +242,26 @@ func InitChirpstack() error {
 		asApplicationService := asAPI.NewApplicationServiceClient(chirpstack)
 		Config.Application.OrganizationId = Config.Organization.Id
 		Config.Application.ServiceProfileId = Config.ServiceProfile.Id
+
+		resp, err := asApplicationService.List(ctx, &asAPI.ListApplicationRequest{
+			Limit:          1000,
+			OrganizationId: Config.Organization.Id,
+		})
+		if err != nil {
+			return fmt.Errorf("grpc: can not list application-profile: %v", err)
+		}
+		for _, a := range resp.Result {
+			if a.ServiceProfileId == Config.ServiceProfile.Id {
+				if a.Id != Config.Application.Id {
+					log.Printf("A application with the same configuration exists? !?. ID: %v <> %v", Config.Application.Id, a.Id)
+					Config.Application.Id = a.Id
+					Config.Application.Name = a.Name
+					dirty = true
+				}
+				break
+			}
+		}
+
 		if Config.Application.Id == 0 {
 			resp, err := asApplicationService.Create(ctx, &asAPI.CreateApplicationRequest{
 				Application: &Config.Application,
@@ -308,16 +339,7 @@ func InitChirpstack() error {
 			}
 		}
 	}
-	
-	if dirty {
-		fmt.Println("The ChirpStack data changed, see 'chirpstack.json'.")
-		if err := WriteConfig(); err != nil {
-			panic(fmt.Errorf("can not write 'chirpstack.json': %v", err))
-		}
-	} else {
-		fmt.Println("The ChirpStack data has not changed.")
-	}
-	
+
 	return nil
 }
 
