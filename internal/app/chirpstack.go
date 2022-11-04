@@ -61,17 +61,6 @@ func InitChirpstack() error {
 
 	dirty := false
 
-	defer func() {
-		if dirty {
-			fmt.Println("The ChirpStack data changed, see 'chirpstack.json'.")
-			if err := WriteConfig(); err != nil {
-				panic(fmt.Errorf("can not write 'chirpstack.json': %v", err))
-			}
-		} else {
-			fmt.Println("The ChirpStack data has not changed.")
-		}
-	}()
-
 	ctx := context.Background()
 	{
 		asOrganizationService := asAPI.NewOrganizationServiceClient(chirpstack)
@@ -319,6 +308,16 @@ func InitChirpstack() error {
 			}
 		}
 	}
+	
+	if dirty {
+		fmt.Println("The ChirpStack data changed, see 'chirpstack.json'.")
+		if err := WriteConfig(); err != nil {
+			panic(fmt.Errorf("can not write 'chirpstack.json': %v", err))
+		}
+	} else {
+		fmt.Println("The ChirpStack data has not changed.")
+	}
+	
 	return nil
 }
 
