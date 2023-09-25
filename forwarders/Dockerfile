@@ -7,7 +7,7 @@ WORKDIR /opt/waziup
 # Building the multi chan packet forwarder for RAK2245
 RUN git clone https://github.com/Lora-net/lora_gateway \
     # lowering the SPI speed for more reliability
-    && sed -i -- 's/SPI_SPEED.*8000000/SPI_SPEED 1000000/g' ./lora_gateway/libloragw/src/loragw_spi.native.c \
+    && sed -i -- 's/SPI_SPEED.*8000000/SPI_SPEED 2000000/g' ./lora_gateway/libloragw/src/loragw_spi.native.c \
     && git clone https://github.com/Lora-net/packet_forwarder \
     && cd packet_forwarder \
     && ./compile.sh
@@ -45,4 +45,8 @@ COPY ./start.sh .
 
 RUN ls
 
-ENTRYPOINT ["bash", "./start.sh"]
+# Uncomment For development
+ENTRYPOINT ["tail", "-f", "/dev/null"]
+
+# Uncomment For production
+#ENTRYPOINT ["bash", "./start.sh"]
