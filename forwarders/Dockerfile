@@ -46,7 +46,7 @@ COPY ./start.sh .
 RUN ls
 
 # Uncomment For development
-ENTRYPOINT ["tail", "-f", "/dev/null"]
+#ENTRYPOINT ["tail", "-f", "/dev/null"]
 
 # Uncomment For production
-#ENTRYPOINT ["bash", "./start.sh"]
+ENTRYPOINT ["bash", "./start.sh"]
