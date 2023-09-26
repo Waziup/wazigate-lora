@@ -1,38 +1,48 @@
-FROM golang:1.12-alpine AS development
+FROM python:2 AS ui
+# pyhton is required to build libsass for node-sass
+# https://github.com/sass/node-sass/issues/3033
 
-ENV PROJECT_PATH=/wazigate-lora
-ENV PATH=$PATH:$PROJECT_PATH/build
-ENV CGO_ENABLED=1
+# libgnutls30 is required for
+# https://github.com/nodesource/distributions/issues/1266
+RUN apt-get update && apt-get install -y --no-install-recommends curl git libgnutls30
+RUN curl -sL https://deb.nodesource.com/setup_14.x | bash -
+RUN apt-get install -y --no-install-recommends nodejs
 
-WORKDIR /
-RUN apk add --no-cache \
-    ca-certificates \
-    tzdata \
-    make \
-    git \
-    bash \
-    gcc \
-    libc-dev \
-    linux-headers \
-    && cd / \
-    && git clone https://github.com/Lora-net/lora_gateway.git \
-    && cd lora_gateway/libloragw/ \
-    && make libloragw.a \
-    && mkdir -p $PROJECT_PATH
+COPY www/. /ui
 
-COPY . $PROJECT_PATH
-WORKDIR $PROJECT_PATH
-RUN mv /lora_gateway/libloragw/libloragw.a SX1301/libs \
-    && export branch=$(git rev-parse --abbrev-ref HEAD); \
-    export version=$(git describe --always); \
-    go build -ldflags "-s -w -X main.version=$version -X main.branch=$branch" -o build/wazigate-lora .
+WORKDIR /ui/
 
-#--------------#
+RUN npm i && npm run build
 
-FROM alpine:latest AS production
+################################################################################
+
+
+FROM golang:1.16-alpine AS bin
+
+ENV CGO_ENABLED=0
+
+COPY . /bin
+
+WORKDIR /bin
+
+
+RUN apk add --no-cache ca-certificates git && \
+    go build -a -installsuffix cgo -ldflags "-s -w" -o wazigate-lora ./cmd/wazigate-lora
+
+################################################################################
+
+
+FROM alpine:latest AS app
 
 WORKDIR /root/
-RUN apk --no-cache add ca-certificates tzdata curl
-COPY --from=development /wazigate-lora/build/wazigate-lora .
-COPY www www/
-ENTRYPOINT ["./wazigate-lora", "-r", "sx127x"]
+RUN apk --no-cache add ca-certificates curl
+
+# copy bin files (the wazigate-lora binary)
+COPY --from=bin /bin/wazigate-lora .
+
+# copy UI files (the wazigate-lora UI)
+COPY --from=ui /ui/dist ./www/dist
+COPY --from=ui /ui/img ./www/img
+COPY --from=ui /ui/index.html /ui/icon.png ./www/
+
+ENTRYPOINT ["./wazigate-lora"]
