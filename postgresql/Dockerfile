@@ -1,3 +1,2 @@
-FROM postgres:9.6-alpine
-
+FROM postgres:14-alpine
 #MAINTAINER Moji mojtaba.eskandari@waziup.org

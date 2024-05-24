@@ -16,8 +16,7 @@ RUN npm i && npm run build
 
 ################################################################################
 
-
-FROM golang:1.16-alpine AS bin
+FROM golang:1.19-alpine AS bin
 
 ENV CGO_ENABLED=0
 
@@ -29,6 +28,8 @@ WORKDIR /bin
 RUN apk add --no-cache ca-certificates git && \
     go build -a -installsuffix cgo -ldflags "-s -w" -o wazigate-lora ./cmd/wazigate-lora
 
+#RUN apk add --no-cache ca-certificates git
+#RUN go build -a -installsuffix cgo -ldflags "-s -w" -o wazigate-lora ./cmd/wazigate-lora
 ################################################################################
 
 

@@ -1,15 +1,16 @@
 // This service creates a bridge between Chirpstack and Wazigate.
 // Every Wazigate Device might implement 'lorawan' metadata that will make this service create a
 // a identical device in Chirpstack. The metadata should look like this:
-// {
-//   "lorawan": {
-//      "devEUI": "AA555A0026011d87",
-//      "profile": "WaziDev",
-//      "devAddr": "26011d87",
-//      "appSKey": "23158d3bbc31e6af670d195b5aed5525",
-//      "nwkSEncKey": "d83cb057cebd2c43e21f4cde01c19ae1",
-//    }
-// }
+//
+//	{
+//	  "lorawan": {
+//	     "devEUI": "AA555A0026011d87",
+//	     "profile": "WaziDev",
+//	     "devAddr": "26011d87",
+//	     "appSKey": "23158d3bbc31e6af670d195b5aed5525",
+//	     "nwkSEncKey": "d83cb057cebd2c43e21f4cde01c19ae1",
+//	   }
+//	}
 package app
 
 import (
@@ -17,6 +18,7 @@ import (
 	"context"
 	"encoding/base64"
 	"encoding/binary"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"log"
@@ -28,9 +30,10 @@ import (
 	"github.com/Waziup/wazigate-lora/internal/pkg/waziapp"
 	"github.com/Waziup/wazigate-lora/internal/pkg/wazigate"
 	"github.com/Waziup/wazigate-lora/internal/pkg/waziup"
-	asAPI "github.com/brocaar/chirpstack-api/go/v3/as/external/api"
-	asIntegr "github.com/brocaar/chirpstack-api/go/v3/as/integration"
-	gw "github.com/brocaar/chirpstack-api/go/v3/gw"
+	asAPI "github.com/chirpstack/chirpstack/api/go/v4/api"
+	gw "github.com/chirpstack/chirpstack/api/go/v4/gw"
+	asIntegr "github.com/chirpstack/chirpstack/api/go/v4/integration"
+
 	"github.com/golang/protobuf/jsonpb"
 	"github.com/golang/protobuf/proto"
 )
@@ -65,19 +68,17 @@ func ListenAndServe() {
 
 func Serve() error {
 
-	wazigate.Subscribe("gateway/+/event/+")
+	wazigate.Subscribe("eu868/gateway/+/event/+")
 	wazigate.Subscribe("application/+/device/+/event/+")
 	wazigate.Subscribe("devices/+/actuators/+/value")
 	wazigate.Subscribe("devices/+/actuators/+/values")
 	wazigate.Subscribe("devices/+/meta")
-
 	for {
 		msg, err := wazigate.Message()
 		if err != nil {
 			return err
 		}
 		topic := strings.Split(msg.Topic, "/")
-
 		// Topic: devices/+/meta
 		if len(topic) == 3 && topic[0] == "devices" && topic[2] == "meta" {
 			// A device's metadata changed. If the device is a LoRaWAN device we will update
@@ -92,11 +93,11 @@ func Serve() error {
 			}
 			checkWaziupDevice(id, meta)
 
-			// Topic: gateway/+/event/+
-		} else if len(topic) == 4 && topic[0] == "gateway" {
+			// Topic: eu868/gateway/+/event/+
+		} else if len(topic) == 5 && topic[1] == "gateway" {
 			// This topic is served by ChirpStack and emits Gateway events.
 			// A 'gateway' from CS is just a packet forwarder for Waziup.
-			switch topic[3] {
+			switch topic[4] {
 			case "stats":
 				// var gwStats gw.GatewayStats
 				// if err = Unmarshal(msg.Data, &gwStats); err != nil {
@@ -114,14 +115,18 @@ func Serve() error {
 				}
 
 				log.Println("--- LoRaWAN Radio Rx")
-
-				loraModInfo := gwUp.TxInfo.GetLoraModulationInfo()
+				loraModInfo := gwUp.TxInfoLegacy.GetLoraModulationInfo()
+				log.Println("loraModInfo == %v", loraModInfo)
 				data := base64.StdEncoding.EncodeToString(gwUp.GetPhyPayload())
-				gwid := binary.BigEndian.Uint64(gwUp.RxInfo.GatewayId)
+				log.Println("data == %v", data)
+				//gwid := binary.BigEndian.Uint64(gwUp.RxInfo.GatewayId)
+				gwid := gwUp.RxInfo.GatewayId
+				log.Println("gwid == %v", gwid)
 				if loraModInfo != nil {
 					log.Printf("Forwarder %X: LoRa: %.2f MHz, SF%d BW%d CR%s, Data: %s", gwid, float64(gwUp.TxInfo.Frequency)/1000000, loraModInfo.SpreadingFactor, loraModInfo.Bandwidth, loraModInfo.CodeRate, data)
 				}
-				fskModInfo := gwUp.TxInfo.GetFskModulationInfo()
+				fskModInfo := gwUp.TxInfoLegacy.GetFskModulationInfo()
+				log.Println("fskModInfo == %s", fskModInfo)
 				if fskModInfo != nil {
 					log.Printf("Forwarder %X: FSK %.2f MHz, Bitrate: %d, Data: %s", gwid, float64(gwUp.TxInfo.Frequency)/1000000, fskModInfo.Datarate, data)
 				}
@@ -148,7 +153,17 @@ func Serve() error {
 					log.Printf("Err Can not unmarshal message %q: %v", msg.Topic, err)
 					return err
 				}
-				devEUI := binary.BigEndian.Uint64(uplinkEvt.GetDevEui())
+				// Convert hex string to byte slice
+				//hexStr := topic[3]
+				hexStr := uplinkEvt.DeviceInfo.DevEui
+				bytes, err := hex.DecodeString(hexStr)
+				if err != nil {
+					log.Fatal(err)
+				}
+
+				// Convert byte slice to uint64
+				devEUI := binary.BigEndian.Uint64(bytes)
+				//devEUI := binary.BigEndian.Uint64([]byte(uplinkEvt.DeviceInfo.DevEui))
 				data := base64.StdEncoding.EncodeToString(uplinkEvt.GetData())
 				log.Printf("DevEUI %X: %s", devEUI, data)
 
@@ -212,17 +227,17 @@ func Serve() error {
 					log.Printf("Err Can not unmarshal message %q: %v", msg.Topic, err)
 					return err
 				}
-				eui := statusEvt.GetDevEui()
+				eui := statusEvt.DeviceInfo.DevEui
 				battery := statusEvt.GetBatteryLevel()
 				log.Printf("Received status from %v: %v Battery", eui, battery)
 			case "error":
-				var errorEvt asIntegr.ErrorEvent
+				var errorEvt asIntegr.LogEvent
 				if err = Unmarshal(msg.Data, &errorEvt); err != nil {
 					log.Printf("Err Can not unmarshal message %q: %v", msg.Topic, err)
 					return err
 				}
-				eui := errorEvt.GetDevEui()
-				e := errorEvt.GetError()
+				eui := errorEvt.DeviceInfo.DevEui
+				e := errorEvt.Description
 				log.Printf("Received error from %v: %v", eui, e)
 			case "ack":
 				var ackEvt asIntegr.AckEvent
@@ -230,7 +245,7 @@ func Serve() error {
 					log.Printf("Err Can not unmarshal message %q: %v", msg.Topic, err)
 					return err
 				}
-				eui := ackEvt.GetDevEui()
+				eui := ackEvt.DeviceInfo.DevEui
 				log.Printf("Received ack from %v", eui)
 			case "join":
 				var joinEvt asIntegr.JoinEvent
@@ -238,7 +253,7 @@ func Serve() error {
 					log.Printf("Err Can not unmarshal message %q: %v", msg.Topic, err)
 					return err
 				}
-				eui := joinEvt.GetDevEui()
+				eui := joinEvt.DeviceInfo.DevEui
 				log.Printf("Device %v joined the network.", eui)
 
 			default:
@@ -270,9 +285,9 @@ func Serve() error {
 			// log.Printf("Base64: [%d] %s", len(base64Data), base64Data)
 			devEUI := fmt.Sprintf("%016X", devEUIInt64)
 			ctx := context.Background()
-			asDeviceQueueService := asAPI.NewDeviceQueueServiceClient(chirpstack)
+			asDeviceQueueService := asAPI.NewDeviceServiceClient(chirpstack)
 			{
-				_, err := asDeviceQueueService.Flush(ctx, &asAPI.FlushDeviceQueueRequest{
+				_, err := asDeviceQueueService.FlushQueue(ctx, &asAPI.FlushDeviceQueueRequest{
 					DevEui: devEUI,
 				})
 				if err != nil {
@@ -282,7 +297,7 @@ func Serve() error {
 			}
 			{
 				resp, err := asDeviceQueueService.Enqueue(ctx, &asAPI.EnqueueDeviceQueueItemRequest{
-					DeviceQueueItem: &asAPI.DeviceQueueItem{
+					QueueItem: &asAPI.DeviceQueueItem{
 						DevEui: devEUI,
 						FPort:  100,
 						Data:   data,
@@ -292,7 +307,7 @@ func Serve() error {
 					log.Printf("Can not enqueue payload: %v", err)
 					continue
 				}
-				log.Printf("Payload enqueued: FCnt %d", resp.FCnt)
+				log.Printf("Payload enqueued: FCnt %d", resp.Id)
 			}
 
 		} else {

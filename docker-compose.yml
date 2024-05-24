@@ -2,119 +2,147 @@ version: "3"
 
 services:
   wazigate-lora:
-    container_name: waziup.wazigate-lora
-    image: waziup/wazigate-lora
-    build:
-      context: ./
-    logging:
-      driver: "json-file"
-      options:
-        max-size: "200k"
-        max-file: "10"
-    restart: always
-    # environment:
-    #   - WAZIGATE_EDGE=wazigate-edge:80
-    depends_on:
-      - chirpstack-network-server
-      - chirpstack-application-server
-      - chirpstack-gateway-bridge
-    volumes:
-      - .:/root/app
-      - ./main-app:/go/src/main-app # Needed for development
-      - /var/run/dbus:/var/run/dbus
-      - /sys/class/gpio:/sys/class/gpio
-      - /dev:/dev
+      container_name: waziup.wazigate-lora
+      image: waziup/wazigate-lora
+      build:
+        context: ./
+      logging:
+        driver: "json-file"
+        options:
+          max-size: "200k"
+          max-file: "10"
+      restart: always
+      #environment:
+      #   - WAZIGATE_EDGE=wazigate-edge:80
+      depends_on:
+        - chirpstack
+        - chirpstack-gateway-bridge
+        - chirpstack-rest-api
+      volumes:
+        - .:/root/app
+        - ./main-app:/go/src/main-app # Needed for development
+        - /var/run/dbus:/var/run/dbus
+        - /sys/class/gpio:/sys/class/gpio
+        - /dev:/dev
+      
+      #added for development! Uncomment for production
+        - /var/lib/wazigate/apps/waziup.wazigate-lora:/var/lib/waziapp
+      #  - /var/run/redis:/var/run/redis
+      extra_hosts: 
+        - "wazigate:172.17.0.1"
+        - "waziup.wazigate-edge:172.17.0.1"
 
-  chirpstack-network-server:
-    container_name: waziup.wazigate-lora.chirpstack-network-server
-    image: waziup/chirpstack-network-server:3.11.0
-    # build:
-    #   context: ./chirpstack-network-server
+  chirpstack:
+    container_name: waziup.wazigate-lora.chirpstack-v4
+    image: chirpstack/chirpstack:4
+    command: -c /etc/chirpstack
+    restart: unless-stopped
+    volumes:
+      - ./conf/chirpstack:/etc/chirpstack
+      - ./lorawan-devices:/opt/lorawan-devices
+
+      #added for development! Uncomment for production
+      #- /var/run/redis:/var/run/redis
     depends_on:
       - postgresql
+      - mosquitto
       - redis
-    logging:
-      driver: "json-file"
-      options:
-        max-size: "200k"
-        max-file: "10"
-    restart: always
-    volumes:
-      - ./conf/chirpstack-network-server:/etc/chirpstack-network-server
-    labels:
-      io.waziup.wazigate.dep: "wazigate-lora"
-
-  chirpstack-application-server:
-    container_name: waziup.wazigate-lora.chirpstack-application-server
-    image: waziup/chirpstack-application-server:3.13.2
-    # build:
-    #   context: ./chirpstack-application-server
-    depends_on:
-      - postgresql
-      - redis
-    logging:
-      driver: "json-file"
-      options:
-        max-size: "200k"
-        max-file: "10"
-    restart: always
+    environment:
+      - MQTT_BROKER_HOST=mosquitto
+      - REDIS_HOST=redis
+      - POSTGRESQL_HOST=postgresql
     ports:
-      - "8080:8080"
-    volumes:
-      - ./conf/chirpstack-application-server:/etc/chirpstack-application-server
+      - 8080:8080
     labels:
       io.waziup.wazigate.dep: "wazigate-lora"
+    extra_hosts: 
+      - "wazigate:172.17.0.1"
+      - "waziup.wazigate-edge:172.17.0.1"
+      - "wazigate-edge:172.17.0.1"
 
   chirpstack-gateway-bridge:
     container_name: waziup.wazigate-lora.chirpstack-gateway-bridge
-    image: waziup/chirpstack-gateway-bridge:3.9.2
-    # build:
-    #   context: ./chirpstack-gateway-bridge
+    image: chirpstack/chirpstack-gateway-bridge:4
     logging:
       driver: "json-file"
       options:
         max-size: "200k"
         max-file: "10"
-    restart: always
+    restart: unless-stopped
     ports:
       - 1700:1700/udp
     volumes:
       - ./conf/chirpstack-gateway-bridge:/etc/chirpstack-gateway-bridge
+    environment:
+      - INTEGRATION__MQTT__EVENT_TOPIC_TEMPLATE=eu868/gateway/{{ .GatewayID }}/event/{{ .EventType }}
+      - INTEGRATION__MQTT__STATE_TOPIC_TEMPLATE=eu868/gateway/{{ .GatewayID }}/state/{{ .StateType }}
+      - INTEGRATION__MQTT__COMMAND_TOPIC_TEMPLATE=eu868/gateway/{{ .GatewayID }}/command/#
+
+      #- INTEGRATION__MQTT__EVENT_TOPIC_TEMPLATE=gateway/{{ .GatewayID }}/event/{{ .EventType }}
+      #- INTEGRATION__MQTT__STATE_TOPIC_TEMPLATE=gateway/{{ .GatewayID }}/state/{{ .StateType }}
+      #- INTEGRATION__MQTT__COMMAND_TOPIC_TEMPLATE=gateway/{{ .GatewayID }}/command/#
+    depends_on:
+      - mosquitto
     labels:
       io.waziup.wazigate.dep: "wazigate-lora"
+    extra_hosts: 
+      - "wazigate:172.17.0.1"
+      - "waziup.wazigate-edge:172.17.0.1"
+      - "wazigate-edge:172.17.0.1"
+
+  chirpstack-rest-api:
+    image: chirpstack/chirpstack-rest-api:4
+    restart: unless-stopped
+    command: --server chirpstack:8080 --bind 0.0.0.0:8090 --insecure
+    ports:
+      - 8090:8090
+    depends_on:
+      - chirpstack
 
   postgresql:
     container_name: postgresql
-    image: waziup/wazigate-postgresql
-    # build:
-    #   context: ./postgresql  # Due to some issues we use an older version and keep it in the waziup repo
+    image: postgres:14-alpine
     logging:
       driver: "json-file"
       options:
         max-size: "200k"
         max-file: "10"
-    restart: always
+    restart: unless-stopped
     volumes:
       - ./conf/postgresql/initdb:/docker-entrypoint-initdb.d
       - postgresqldata:/var/lib/postgresql/data
-    environment: 
-      - POSTGRES_HOST_AUTH_METHOD=trust
+    environment:
+      - POSTGRES_PASSWORD=chirpstack
     labels:
       io.waziup.wazigate.dep: "wazigate-lora"
 
   redis:
     container_name: redis
-    image: redis:5-alpine
+    image: redis:7-alpine
     logging:
       driver: "json-file"
       options:
         max-size: "200k"
         max-file: "10"
-    restart: always
+    restart: unless-stopped
     volumes:
       - redisdata:/data
     labels:
       io.waziup.wazigate.dep: "wazigate-lora"
+
+  mosquitto:
+    image: eclipse-mosquitto:1.6  # The MQTT bridge seems to work only with eclipse-mosquitto 1.6
+    #image: eclipse-mosquitto:2
+    restart: unless-stopped
+    ports:
+      - 1884:1884 # Using port 1884 because WaziGate Edge MQTT uses port 1883
+      - 1885:1885
+    volumes: 
+      - ./conf/mosquitto/config/:/mosquitto/config/
+    extra_hosts: 
+      - "wazigate:172.17.0.1"
+      - "waziup.wazigate-edge:172.17.0.1"
+      - "wazigate-edge:172.17.0.1"
 
   forwarders:
     container_name: waziup.wazigate-lora.forwarders
