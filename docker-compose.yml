@@ -26,8 +26,7 @@ services:
         - /dev:/dev
       
       #added for development! Uncomment for production
-        - /var/lib/wazigate/apps/waziup.wazigate-lora:/var/lib/waziapp
-      #  - /var/run/redis:/var/run/redis
+      #  - /var/lib/wazigate/apps/waziup.wazigate-lora:/var/lib/waziapp
       extra_hosts: 
         - "wazigate:172.17.0.1"
         - "waziup.wazigate-edge:172.17.0.1"
@@ -39,7 +38,7 @@ services:
     restart: unless-stopped
     volumes:
       - ./conf/chirpstack:/etc/chirpstack
-      - ./lorawan-devices:/opt/lorawan-devices
+      #- ./lorawan-devices:/opt/lorawan-devices
 
       #added for development! Uncomment for production
       #- /var/run/redis:/var/run/redis
