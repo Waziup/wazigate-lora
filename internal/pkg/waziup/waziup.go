@@ -95,6 +95,13 @@ var jsonContentTypeRegexp = regexp.MustCompile("^application/json(;|$)")
 
 // Get queries an API endpoint to read data.
 func (w *Waziup) Get(res string, o interface{}) error {
+	/*
+		// during development "mode" we can use this instead to also put an Auth token
+		resp := fetch.Fetch(w.ToURL(res), &fetch.FetchInit{
+			Headers: http.Header{
+				"Authorization": []string{"Bearer <put_your_token_here>"},
+			},
+		})*/
 	resp := fetch.Fetch(w.ToURL(res), nil)
 	log.Printf("GET %d %s %q", resp.Status, res, resp.StatusText)
 	if !resp.OK {

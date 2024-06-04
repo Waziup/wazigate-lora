@@ -4,13 +4,13 @@ import (
 	"context"
 	"fmt"
 	"log"
-	"math/rand"
-	"strconv"
 	"time"
 
-	asAPI "github.com/brocaar/chirpstack-api/go/v3/as/external/api"
+	asAPI "github.com/chirpstack/chirpstack/api/go/v4/api"
+	"github.com/chirpstack/chirpstack/api/go/v4/common"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/status"
 )
 
@@ -18,36 +18,37 @@ var chirpstack *grpc.ClientConn
 
 const chirpstackTokenRefreshInterval = 5 * time.Minute
 
+var apiToken string
+
+type APIToken string
+
 func connectToChirpStack() error {
 	var err error
-	chirpstack, err = grpc.Dial("waziup.wazigate-lora.chirpstack-application-server:8080",
+	chirpstack, err = grpc.Dial("waziup.wazigate-lora.chirpstack-v4:8080",
 		grpc.WithBlock(),
-		grpc.WithPerRPCCredentials(jwtCredentials),
-		grpc.WithInsecure())
+		grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
 		return fmt.Errorf("grpc: can not dial: %v", err)
 	}
-
 	internalClient := asAPI.NewInternalServiceClient(chirpstack)
-	resp, err := internalClient.Login(context.Background(), &Config.Login)
+	loginReq := &asAPI.LoginRequest{
+		Email:    "admin",
+		Password: "admin",
+	}
+	res, err := internalClient.Login(context.Background(), loginReq)
 	if err != nil {
 		return fmt.Errorf("grpc: can not login: %v", err)
 	}
 
-	jwtCredentials.SetToken(resp.Jwt)
-	return nil
-}
-
-func refreshChirpstackToken() {
-	for {
-		time.Sleep(chirpstackTokenRefreshInterval)
-		internalClient := asAPI.NewInternalServiceClient(chirpstack)
-		resp, err := internalClient.Login(context.Background(), &Config.Login)
-		if err != nil {
-			log.Fatalf("grpc: can not refresh token: %v", err)
-		}
-		jwtCredentials.SetToken(resp.Jwt)
+	defer chirpstack.Close()
+	chirpstack, err = grpc.Dial("waziup.wazigate-lora.chirpstack-v4:8080",
+		grpc.WithBlock(),
+		grpc.WithPerRPCCredentials(APIToken(APIToken(res.Jwt))),
+		grpc.WithTransportCredentials(insecure.NewCredentials()))
+	if err != nil {
+		return fmt.Errorf("grpc: can not dial: %v", err)
 	}
+	return nil
 }
 
 func InitChirpstack() error {
@@ -55,8 +56,6 @@ func InitChirpstack() error {
 	if err := connectToChirpStack(); err != nil {
 		return err
 	}
-
-	go refreshChirpstackToken()
 	log.Println("--- Init ChirpStack")
 
 	dirty := false
@@ -74,195 +73,104 @@ func InitChirpstack() error {
 
 	ctx := context.Background()
 	{
-		asOrganizationService := asAPI.NewOrganizationServiceClient(chirpstack)
-		resp, err := asOrganizationService.Get(ctx, &asAPI.GetOrganizationRequest{
-			Id: Config.Organization.Id,
-		})
-		if err != nil {
-			if status.Code(err) == codes.NotFound {
-				log.Printf("Organization id %d does not exist !?", Config.Organization.Id)
+		{
+			asTenantServiceClient := asAPI.NewTenantServiceClient(chirpstack)
 
-				Config.Organization.Id = 0
-				Config.Organization.Name = "wazigate_" + strconv.Itoa(rand.Int())
-				Config.Organization.DisplayName = "Local Wazigate"
-				resp, err := asOrganizationService.Create(ctx, &asAPI.CreateOrganizationRequest{
-					Organization: &Config.Organization,
+			if Config.Tenant.Id == "" {
+				resp, err := asTenantServiceClient.Create(ctx, &asAPI.CreateTenantRequest{
+					Tenant: &Config.Tenant,
 				})
 				if err != nil {
-					return fmt.Errorf("grpc: can not create organization: %v", err)
+					return fmt.Errorf("grpc: can not create tenant: %v", err)
 				}
-				Config.Organization.Id = resp.Id
+				Config.Tenant.Id = resp.Id
+				log.Printf("Tenant has been created. ID: %v", Config.Tenant.Id)
 				dirty = true
-				log.Printf("Organization has been recreated. ID: %v", Config.Organization.Id)
 			} else {
-				return fmt.Errorf("grpc: can not get Organization: %v", err)
-			}
-		} else {
-			log.Printf("Organization %q OK.", resp.Organization.Name)
-		}
-	}
-	{
-		asNetworkServerService := asAPI.NewNetworkServerServiceClient(chirpstack)
-		resp, err := asNetworkServerService.List(ctx, &asAPI.ListNetworkServerRequest{
-			Limit:          1000,
-			OrganizationId: Config.Organization.Id,
-		})
-		if err != nil {
-			return fmt.Errorf("grpc: can not list network-servers: %v", err)
-		}
-		for _, ns := range resp.Result {
-			if ns.Server == Config.NetworkServer.Server {
-				if ns.Id != Config.NetworkServer.Id {
-					log.Printf("A network-server with the same configuration exists? !?. ID: %v <> %v", Config.NetworkServer.Id, ns.Id)
-					Config.NetworkServer.Id = ns.Id
-					dirty = true
-				}
-				break
-			}
-		}
-
-		if Config.NetworkServer.Id == 0 {
-			resp, err := asNetworkServerService.Create(ctx, &asAPI.CreateNetworkServerRequest{
-				NetworkServer: &Config.NetworkServer,
-			})
-			if err != nil {
-				return fmt.Errorf("grpc: can not create network-server: %v", err)
-			}
-			Config.NetworkServer.Id = resp.Id
-			log.Printf("Network-server has been created. ID: %v", Config.NetworkServer.Id)
-			dirty = true
-		} else {
-			resp, err := asNetworkServerService.Get(ctx, &asAPI.GetNetworkServerRequest{
-				Id: Config.NetworkServer.Id,
-			})
-			if err != nil {
-				if status.Code(err) == codes.NotFound {
-					log.Printf("Network-server id %d does not exist !?", Config.NetworkServer.Id)
-					resp, err := asNetworkServerService.Create(ctx, &asAPI.CreateNetworkServerRequest{
-						NetworkServer: &Config.NetworkServer,
-					})
-					if err != nil {
-						return fmt.Errorf("grpc: can not create network-server: %v", err)
+				resp, err := asTenantServiceClient.Get(ctx, &asAPI.GetTenantRequest{
+					Id: Config.Tenant.Id,
+				})
+				if err != nil {
+					if status.Code(err) == codes.NotFound {
+						log.Printf("Tenant id %v does not exist !?", Config.Tenant.Id)
+						resp, err := asTenantServiceClient.Create(ctx, &asAPI.CreateTenantRequest{
+							Tenant: &Config.Tenant,
+						})
+						if err != nil {
+							return fmt.Errorf("grpc: can not create tenant: %v", err)
+						}
+						Config.Tenant.Id = resp.Id
+						dirty = true
+						log.Printf("Tenant has been recreated. ID: %v", Config.Tenant.Id)
+					} else {
+						return fmt.Errorf("grpc: can not get Tenant: %v", err)
 					}
-					Config.NetworkServer.Id = resp.Id
-					log.Printf("Network-server has been recreated. ID: %v", Config.NetworkServer.Id)
-					dirty = true
 				} else {
-					return fmt.Errorf("grpc: can not get network-server: %v", err)
+					log.Printf("Tenant %q OK.", resp.Tenant.Name)
 				}
-			} else {
-				log.Printf("Network-server %q OK.", resp.NetworkServer.Name)
 			}
 		}
+
 	}
 	{
-		asServiceProfileService := asAPI.NewServiceProfileServiceClient(chirpstack)
-		Config.ServiceProfile.NetworkServerId = Config.NetworkServer.Id
-		Config.ServiceProfile.OrganizationId = Config.Organization.Id
+		{
+			asGatewayService := asAPI.NewGatewayServiceClient(chirpstack)
+			Config.Gateway.TenantId = Config.Tenant.Id
 
-		resp, err := asServiceProfileService.List(ctx, &asAPI.ListServiceProfileRequest{
-			Limit:          1000,
-			OrganizationId: Config.Organization.Id,
-		})
-		if err != nil {
-			return fmt.Errorf("grpc: can not list service-profile: %v", err)
-		}
-		for _, sp := range resp.Result {
-			if sp.NetworkServerId == Config.NetworkServer.Id {
-				if sp.Id != Config.ServiceProfile.Id {
-					log.Printf("A  service-profile with the same configuration exists? !?. ID: %v <> %v", Config.ServiceProfile.Id, sp.Id)
-					Config.ServiceProfile.Id = sp.Id
-					dirty = true
-				}
-				break
-			}
-		}
-
-		if Config.ServiceProfile.Id == "" {
-			resp, err := asServiceProfileService.Create(ctx, &asAPI.CreateServiceProfileRequest{
-				ServiceProfile: &Config.ServiceProfile,
-			})
-			if err != nil {
-				return fmt.Errorf("grpc: can not create service-profile: %v", err)
-			}
-			Config.ServiceProfile.Id = resp.Id
-			log.Printf("Service-profile has been created. ID: %v", Config.ServiceProfile.Id)
-			dirty = true
-		} else {
-			resp, err := asServiceProfileService.Get(ctx, &asAPI.GetServiceProfileRequest{
-				Id: Config.ServiceProfile.Id,
-			})
-			if err != nil {
-				if status.Code(err) == codes.NotFound {
-					log.Printf("Service-profile id '%v' does not exist !?", Config.ServiceProfile.Id)
-
-					resp, err := asServiceProfileService.Create(ctx, &asAPI.CreateServiceProfileRequest{
-						ServiceProfile: &Config.ServiceProfile,
-					})
-					if err != nil {
-						return fmt.Errorf("grpc: can not create service-profile: %v", err)
-					}
-					Config.ServiceProfile.Id = resp.Id
-					log.Printf("Service-profile has been recreated. ID: %v", Config.ServiceProfile.Id)
-					dirty = true
-				} else {
-					return fmt.Errorf("grpc: can not get service-profile: %v", err)
-				}
-			} else {
-				log.Printf("Service-profile %q OK.", resp.ServiceProfile.Name)
-			}
-		}
-	}
-	{
-		asGatewayService := asAPI.NewGatewayServiceClient(chirpstack)
-		Config.Gateway.OrganizationId = Config.Organization.Id
-		resp, err := asGatewayService.Get(ctx, &asAPI.GetGatewayRequest{
-			Id: Config.Gateway.Id,
-		})
-		if err != nil {
-			// log.Printf("\n\n\t-->\tGholi: %q\n\n", err)
-			if status.Code(err) == codes.NotFound {
-				Config.Gateway.NetworkServerId = Config.NetworkServer.Id
-				Config.Gateway.OrganizationId = Config.Organization.Id
-				_, err = asGatewayService.Create(ctx, &asAPI.CreateGatewayRequest{
+			if Config.Gateway.GatewayId == "" {
+				_, err := asGatewayService.Create(ctx, &asAPI.CreateGatewayRequest{
 					Gateway: &Config.Gateway,
 				})
 				if err != nil {
 					return fmt.Errorf("grpc: can not create gateway: %v", err)
 				}
-				log.Printf("Gateway has been created. ID: %v", Config.Gateway.Id)
+				log.Printf("Gateway has been created. ID: %v", Config.Gateway.GatewayId)
+				dirty = true
 			} else {
-				return fmt.Errorf("grpc: can not get gateway: %v", err)
+				resp, err := asGatewayService.Get(ctx, &asAPI.GetGatewayRequest{
+					GatewayId: Config.Gateway.GatewayId,
+				})
+				if err != nil {
+					// log.Printf("\n\n\t-->\tGholi: %q\n\n", err)
+					if status.Code(err) == codes.NotFound {
+						_, err = asGatewayService.Create(ctx, &asAPI.CreateGatewayRequest{
+							Gateway: &Config.Gateway,
+						})
+						if err != nil {
+							return fmt.Errorf("grpc: can not create gateway: %v", err)
+						}
+						log.Printf("Gateway has been created. ID: %v", Config.Gateway.GatewayId)
+					} else {
+						return fmt.Errorf("grpc: can not get gateway: %v", err)
+					}
+				} else {
+					log.Printf("Gateway %q OK.", resp.Gateway.Name)
+				}
 			}
-		} else {
-			log.Printf("Gateway %q OK.", resp.Gateway.Name)
 		}
 	}
 	{
 		asApplicationService := asAPI.NewApplicationServiceClient(chirpstack)
-		Config.Application.OrganizationId = Config.Organization.Id
-		Config.Application.ServiceProfileId = Config.ServiceProfile.Id
+		Config.Application.TenantId = Config.Tenant.Id
 
-		resp, err := asApplicationService.List(ctx, &asAPI.ListApplicationRequest{
-			Limit:          1000,
-			OrganizationId: Config.Organization.Id,
+		resp, err := asApplicationService.List(ctx, &asAPI.ListApplicationsRequest{
+			Limit:    1000,
+			TenantId: Config.Tenant.Id,
 		})
 		if err != nil {
 			return fmt.Errorf("grpc: can not list application-profile: %v", err)
 		}
 		for _, a := range resp.Result {
-			if a.ServiceProfileId == Config.ServiceProfile.Id {
-				if a.Id != Config.Application.Id {
-					log.Printf("A application with the same configuration exists? !?. ID: %v <> %v", Config.Application.Id, a.Id)
-					Config.Application.Id = a.Id
-					Config.Application.Name = a.Name
-					dirty = true
-				}
-				break
+			if a.Id != Config.Application.Id {
+				log.Printf("A application with the same configuration exists? !?. ID: %v <> %v", Config.Application.Id, a.Id)
+				Config.Application.Id = a.Id
+				Config.Application.Name = a.Name
+				dirty = true
 			}
+			break
 		}
 
-		if Config.Application.Id == 0 {
+		if Config.Application.Id == "" {
 			resp, err := asApplicationService.Create(ctx, &asAPI.CreateApplicationRequest{
 				Application: &Config.Application,
 			})
@@ -279,7 +187,6 @@ func InitChirpstack() error {
 			if err != nil {
 				if status.Code(err) == codes.NotFound {
 					log.Printf("Application id %v does not exist !?", Config.Application.Id)
-					Config.Application.ServiceProfileId = Config.ServiceProfile.Id
 					resp, err := asApplicationService.Create(ctx, &asAPI.CreateApplicationRequest{
 						Application: &Config.Application,
 					})
@@ -300,9 +207,17 @@ func InitChirpstack() error {
 	{
 		asDeviceProfileService := asAPI.NewDeviceProfileServiceClient(chirpstack)
 		for i, deviceProfile := range Config.DeviceProfiles {
-			deviceProfile.OrganizationId = Config.Organization.Id
-			deviceProfile.NetworkServerId = Config.NetworkServer.Id
 			if deviceProfile.Id == "" {
+				deviceProfile := asAPI.DeviceProfile{
+					Name:                "Wazidev",
+					TenantId:            Config.Tenant.Id,
+					MacVersion:          common.MacVersion_LORAWAN_1_0_1,
+					RegParamsRevision:   common.RegParamsRevision_A,
+					Region:              common.Region_EU868,
+					PayloadCodecRuntime: asAPI.CodecRuntime_CAYENNE_LPP,
+					PayloadCodecScript:  "CAYENNE_LPP",
+				}
+
 				resp, err := asDeviceProfileService.Create(ctx, &asAPI.CreateDeviceProfileRequest{
 					DeviceProfile: &deviceProfile,
 				})
@@ -320,6 +235,15 @@ func InitChirpstack() error {
 				if err != nil {
 					if status.Code(err) == codes.NotFound {
 						log.Printf("Device-profile id %q does not exist!", deviceProfile.Id)
+						deviceProfile := asAPI.DeviceProfile{
+							Name:                "Wazidev",
+							TenantId:            Config.Tenant.Id,
+							MacVersion:          common.MacVersion_LORAWAN_1_0_1,
+							RegParamsRevision:   common.RegParamsRevision_A,
+							Region:              common.Region_EU868,
+							PayloadCodecRuntime: asAPI.CodecRuntime_CAYENNE_LPP,
+							PayloadCodecScript:  "CAYENNE_LPP",
+						}
 						resp, err := asDeviceProfileService.Create(ctx, &asAPI.CreateDeviceProfileRequest{
 							DeviceProfile: &deviceProfile,
 						})
@@ -339,7 +263,6 @@ func InitChirpstack() error {
 			}
 		}
 	}
-
 	return nil
 }
 
@@ -360,7 +283,7 @@ func setDeviceProfileWaziDev(devEUI string, id string) error {
 				Description:     fmt.Sprintf("Automatically created for Waziup device %q.\nDO NOT DELETE!", id),
 				DeviceProfileId: deviceProfileId,
 				ApplicationId:   Config.Application.Id,
-				SkipFCntCheck:   true,
+				SkipFcntCheck:   true,
 			},
 		})
 		if err == nil {
@@ -384,7 +307,7 @@ func setDeviceProfileWaziDev(devEUI string, id string) error {
 			DeviceProfileId: deviceProfileId,
 			Name:            resp.Device.Name,
 			Description:     resp.Device.Description,
-			SkipFCntCheck:   true,
+			SkipFcntCheck:   true,
 		},
 	})
 	if err == nil {
@@ -401,7 +324,9 @@ func setWaziDevActivation(devEUI string, devAddr string, nwkSEncKey string, appS
 	r, err := deviceClient.GetActivation(ctx, &asAPI.GetDeviceActivationRequest{
 		DevEui: devEUI,
 	})
-	if status.Code(err) == codes.NotFound {
+	//log.Printf("Err: %v", err)
+	if err == nil {
+		//log.Printf("Error is nill!!!!!")
 		_, err = deviceClient.Activate(ctx, &asAPI.ActivateDeviceRequest{
 			DeviceActivation: &asAPI.DeviceActivation{
 				DevEui:      devEUI,
@@ -454,28 +379,14 @@ func setWaziDevActivation(devEUI string, devAddr string, nwkSEncKey string, appS
 	return nil
 }
 
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
 
-var jwtCredentials = &JWTCredentials{}
-
-// JWTCredentials provides JWT credentials for gRPC
-type JWTCredentials struct {
-	token string
-}
-
-// GetRequestMetadata returns the meta-data for a request.
-func (j *JWTCredentials) GetRequestMetadata(ctx context.Context, url ...string) (map[string]string, error) {
+func (a APIToken) GetRequestMetadata(ctx context.Context, url ...string) (map[string]string, error) {
 	return map[string]string{
-		"authorization": j.token,
+		"authorization": fmt.Sprintf("Bearer %s", a),
 	}, nil
 }
 
-// RequireTransportSecurity ...
-func (j *JWTCredentials) RequireTransportSecurity() bool {
+func (a APIToken) RequireTransportSecurity() bool {
 	return false
-}
-
-// SetToken sets the JWT token.
-func (j *JWTCredentials) SetToken(token string) {
-	j.token = token
 }

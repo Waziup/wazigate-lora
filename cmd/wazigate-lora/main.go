@@ -1,15 +1,16 @@
 // This service creates a bridge between Chirpstack and Wazigate.
 // Every Wazigate Device might implement 'lorawan' metadata that will make this service create a
 // a identical device in Chirpstack. The metadata should look like this:
-// {
-//   "lorawan": {
-//      "devEUI": "AA555A0026011d87",
-//      "profile": "WaziDev",
-//      "devAddr": "26011d87",
-//      "appSKey": "23158d3bbc31e6af670d195b5aed5525",
-//      "nwkSEncKey": "d83cb057cebd2c43e21f4cde01c19ae1",
-//    }
-// }
+//
+//	{
+//	  "lorawan": {
+//	     "devEUI": "AA555A0026011d87",
+//	     "profile": "WaziDev",
+//	     "devAddr": "26011d87",
+//	     "appSKey": "23158d3bbc31e6af670d195b5aed5525",
+//	     "nwkSEncKey": "d83cb057cebd2c43e21f4cde01c19ae1",
+//	   }
+//	}
 package main
 
 import (
@@ -28,7 +29,6 @@ var packageJSON []byte
 
 func main() {
 	log.SetFlags(0)
-
 	if err := waziapp.ProvidePackageJSON(packageJSON); err != nil {
 		log.Fatalf("Can not provide package.json: %v", err)
 	}
@@ -41,7 +41,6 @@ func main() {
 	if err := wazigate.Connect(); err != nil {
 		log.Fatalf("Can not connect to WaziGate: %v", err)
 	}
-
 	////////////////////
 
 	for {

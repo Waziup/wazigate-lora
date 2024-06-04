@@ -1,5 +1,4 @@
 FROM golang:buster AS development
-
 # We need to use Buster as Alpine removed `qsort` lib that is used by the forwarder
 
 WORKDIR /opt/waziup

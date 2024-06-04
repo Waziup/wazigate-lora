@@ -5,7 +5,7 @@ import (
 	"encoding/json"
 	"net/http"
 
-	asAPI "github.com/brocaar/chirpstack-api/go/v3/as/external/api"
+	asAPI "github.com/chirpstack/chirpstack/api/go/v4/api"
 )
 
 func serveAPI(resp http.ResponseWriter, req *http.Request) {
@@ -34,10 +34,9 @@ func serveAPI(resp http.ResponseWriter, req *http.Request) {
 		switch req.Method {
 		case http.MethodGet:
 			deviceProfileService := asAPI.NewDeviceProfileServiceClient(chirpstack)
-			r, err := deviceProfileService.List(context.Background(), &asAPI.ListDeviceProfileRequest{
-				Limit:          1000,
-				OrganizationId: Config.Organization.Id,
-				ApplicationId:  Config.Application.Id,
+			r, err := deviceProfileService.List(context.Background(), &asAPI.ListDeviceProfilesRequest{
+				Limit:    1000,
+				TenantId: Config.Tenant.Id,
 			})
 			if err != nil {
 				serveError(resp, err)
@@ -53,8 +52,7 @@ func serveAPI(resp http.ResponseWriter, req *http.Request) {
 				return
 			}
 			deviceProfileService := asAPI.NewDeviceProfileServiceClient(chirpstack)
-			deviceProfile.OrganizationId = Config.Organization.Id
-			deviceProfile.NetworkServerId = Config.Gateway.NetworkServerId
+			deviceProfile.TenantId = Config.Tenant.Id
 			if deviceProfile.Id == "" {
 				r, err := deviceProfileService.Create(context.Background(), &asAPI.CreateDeviceProfileRequest{
 					DeviceProfile: &deviceProfile,
