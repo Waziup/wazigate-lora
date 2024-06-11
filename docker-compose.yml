@@ -25,7 +25,7 @@ services:
         - /sys/class/gpio:/sys/class/gpio
         - /dev:/dev
       
-      #added for development! Uncomment for production
+      #added for development! Comment for production
       #  - /var/lib/wazigate/apps/waziup.wazigate-lora:/var/lib/waziapp
       extra_hosts: 
         - "wazigate:172.17.0.1"
@@ -40,7 +40,7 @@ services:
       - ./conf/chirpstack:/etc/chirpstack
       #- ./lorawan-devices:/opt/lorawan-devices
 
-      #added for development! Uncomment for production
+      #added for development! Comment for production
       #- /var/run/redis:/var/run/redis
     depends_on:
       - postgresql
