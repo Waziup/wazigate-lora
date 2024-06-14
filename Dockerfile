@@ -26,7 +26,7 @@ WORKDIR /bin
 
 
 RUN apk add --no-cache ca-certificates git && \
-    go build -a -installsuffix cgo -ldflags "-s -w" -o wazigate-lora ./cmd/wazigate-lora
+    go build -a -installsuffix cgo -ldflags "-s -w" -buildvcs=false -o wazigate-lora ./cmd/wazigate-lora
 
 #RUN apk add --no-cache ca-certificates git
 #RUN go build -a -installsuffix cgo -ldflags "-s -w" -o wazigate-lora ./cmd/wazigate-lora
