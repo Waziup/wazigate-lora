@@ -102,6 +102,7 @@ services:
   postgresql:
     container_name: postgresql
     image: postgres:14-alpine
+    platform: linux/arm64
     logging:
       driver: "json-file"
       options:
