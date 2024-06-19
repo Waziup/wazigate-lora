@@ -52,12 +52,12 @@ services:
       - POSTGRESQL_HOST=postgresql
     ports:
       - 8080:8080
-    labels:
-      io.waziup.wazigate.dep: "wazigate-lora"
     extra_hosts: 
       - "wazigate:172.17.0.1"
       - "waziup.wazigate-edge:172.17.0.1"
       - "wazigate-edge:172.17.0.1"
+    labels:
+      io.waziup.wazigate.dep: "wazigate-lora"
 
   chirpstack-gateway-bridge:
     container_name: waziup.wazigate-lora.chirpstack-gateway-bridge
@@ -144,6 +144,8 @@ services:
       - "wazigate:172.17.0.1"
       - "waziup.wazigate-edge:172.17.0.1"
       - "wazigate-edge:172.17.0.1"
+    labels:
+      io.waziup.wazigate.dep: "wazigate-lora"
 
   forwarders:
     container_name: waziup.wazigate-lora.forwarders
