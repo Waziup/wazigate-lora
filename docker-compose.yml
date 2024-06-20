@@ -172,6 +172,10 @@ services:
       - /dev/ttyACM0
     privileged: true
     tty: true
+    extra_hosts: 
+      - "wazigate:172.17.0.1"
+      - "waziup.wazigate-edge:172.17.0.1"
+      - "wazigate-edge:172.17.0.1"
     labels:
       io.waziup.wazigate.dep: "wazigate-lora"
 
