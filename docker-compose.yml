@@ -108,7 +108,7 @@ services:
       - ./conf/postgresql/initdb:/docker-entrypoint-initdb.d
       - postgresqldata:/var/lib/postgresql/data
     environment:
-      - POSTGRES_PASSWORD=chirpstack
+      - POSTGRES_PASSWORD=chirpstack_ns
     labels:
       io.waziup.wazigate.dep: "wazigate-lora"
 
