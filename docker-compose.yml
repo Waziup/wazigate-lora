@@ -43,13 +43,13 @@ services:
       #added for development! Comment for production
       #- /var/run/redis:/var/run/redis
     depends_on:
-      - postgresql
+      - postgres
       - mosquitto
       - redis
     environment:
       - MQTT_BROKER_HOST=mosquitto
       - REDIS_HOST=redis
-      - POSTGRESQL_HOST=postgresql
+      - POSTGRESQL_HOST=postgres
     ports:
       - 8080:8080
     extra_hosts: 
@@ -108,7 +108,7 @@ services:
       - ./conf/postgresql/initdb:/docker-entrypoint-initdb.d
       - postgresqldata:/var/lib/postgresql/data
     environment:
-      - POSTGRES_PASSWORD=chirpstack
+      - POSTGRES_PASSWORD=root
     labels:
       io.waziup.wazigate.dep: "wazigate-lora"
 

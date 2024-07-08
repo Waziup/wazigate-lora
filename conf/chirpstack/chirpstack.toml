@@ -40,8 +40,9 @@
   # Server address or addresses.
   #
   # Set multiple addresses when connecting to a cluster.
+  #redis://$REDIS_HOST/
   servers=[
-    "redis://$REDIS_HOST/",
+    "redis://127.0.0.1:6379/",
   ]
 
   # TLS enabled.
