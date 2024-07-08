@@ -95,8 +95,8 @@ services:
     depends_on:
       - chirpstack
 
-  postgresql:
-    container_name: postgresql
+  postgres:
+    container_name: postgres
     image: postgres:14-alpine
     logging:
       driver: "json-file"
