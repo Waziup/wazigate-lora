@@ -239,7 +239,8 @@ func Serve() error {
 				eui := errorEvt.DeviceInfo.DevEui
 				e := errorEvt.Description
 				log.Printf("Received error from %v: %v", eui, e)
-			case "ack":
+			//case "ack":
+			case "txack":
 				var ackEvt asIntegr.AckEvent
 				if err = Unmarshal(msg.Data, &ackEvt); err != nil {
 					log.Printf("Err Can not unmarshal message %q: %v", msg.Topic, err)

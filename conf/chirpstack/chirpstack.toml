@@ -40,9 +40,11 @@
   # Server address or addresses.
   #
   # Set multiple addresses when connecting to a cluster.
+  
+  # use this server for development: unix:///var/run/redis/redis.sock
   #redis://$REDIS_HOST/
   servers=[
-    "redis://127.0.0.1:6379/",
+    "redis://$REDIS_HOST/",
   ]
 
   # TLS enabled.
