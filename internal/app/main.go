@@ -163,7 +163,6 @@ func Serve() error {
 
 				// Convert byte slice to uint64
 				devEUI := binary.BigEndian.Uint64(bytes)
-				//devEUI := binary.BigEndian.Uint64([]byte(uplinkEvt.DeviceInfo.DevEui))
 				data := base64.StdEncoding.EncodeToString(uplinkEvt.GetData())
 				log.Printf("DevEUI %X: %s", devEUI, data)
 
@@ -239,8 +238,7 @@ func Serve() error {
 				eui := errorEvt.DeviceInfo.DevEui
 				e := errorEvt.Description
 				log.Printf("Received error from %v: %v", eui, e)
-			//case "ack":
-			case "txack":
+			case "ack":
 				var ackEvt asIntegr.AckEvent
 				if err = Unmarshal(msg.Data, &ackEvt); err != nil {
 					log.Printf("Err Can not unmarshal message %q: %v", msg.Topic, err)
@@ -256,6 +254,14 @@ func Serve() error {
 				}
 				eui := joinEvt.DeviceInfo.DevEui
 				log.Printf("Device %v joined the network.", eui)
+			case "txack":
+				var txackEvt asIntegr.TxAckEvent
+				if err = Unmarshal(msg.Data, &txackEvt); err != nil {
+					log.Printf("Err Can not unmarshal message %q: %v", msg.Topic, err)
+					return err
+				}
+				eui := txackEvt.DeviceInfo.DevEui
+				log.Printf("Received ack from %v", eui)
 
 			default:
 				log.Printf("Unknown MQTT topic %q.", msg.Topic)
