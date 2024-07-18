@@ -85,7 +85,7 @@ func InitChirpstack() error {
 				UserId: "",
 			}
 			// Fetch list of tenants
-			resp, err := asTenantServiceClient.ListTenantsRequest(ctx, req)
+			resp, err := asTenantServiceClient.List(ctx, req)
 			if err != nil {
 				return fmt.Errorf("grpc: can not list tenants: %v", err)
 			}
