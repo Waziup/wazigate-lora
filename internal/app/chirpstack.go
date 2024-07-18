@@ -22,6 +22,8 @@ var apiToken string
 
 type APIToken string
 
+var chirpstack_tenantName = "Chirpstack" // Use the default "Chirpstack" tenant for WaziGate
+
 func connectToChirpStack() error {
 	var err error
 	chirpstack, err = grpc.Dial("waziup.wazigate-lora.chirpstack-v4:8080",
@@ -75,6 +77,45 @@ func InitChirpstack() error {
 	{
 		{
 			asTenantServiceClient := asAPI.NewTenantServiceClient(chirpstack)
+			
+			req := &asAPI.ListTenantsRequest{
+				Limit:  100,
+				Offset: 0,
+				Search: "",
+				UserId: "",
+			}
+			// Fetch list of tenants
+			resp, err := asTenantServiceClient.ListTenants(ctx, req)
+			if err != nil {
+				return fmt.Errorf("grpc: can not list tenants: %v", err)
+			}
+
+			// Iterate through the tenants list to find the tenant with the name "Chirpstack"
+			var tenantId string
+			// Get the ID of chirpstack_tenantName
+			for _, tenant := range resp.Result {
+				if tenant.Name == chirpstack_tenantName {
+					tenantId = tenant.Id
+					break
+				}
+			}
+
+			if tenantId == "" {
+				log.Printf("Cannot find tenant id for %s", chirpstack_tenantName)
+			}
+
+			// Set Config.Tenant.Id to the id of the "Chirpstack" tenant
+			Config.Tenant.Id = tenantId
+
+			dirty = true
+			
+			//log.Printf("Config.Tenant.Id set to: %d", Config.Tenant.Id)
+			log.Printf("Tenant %q OK.", chirpstack_tenantName)
+		}
+
+		/*
+		{
+			asTenantServiceClient := asAPI.NewTenantServiceClient(chirpstack)
 
 			if Config.Tenant.Id == "" {
 				resp, err := asTenantServiceClient.Create(ctx, &asAPI.CreateTenantRequest{
@@ -110,7 +151,7 @@ func InitChirpstack() error {
 				}
 			}
 		}
-
+		*/
 	}
 	{
 		{
