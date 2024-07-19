@@ -22,7 +22,7 @@ var apiToken string
 
 type APIToken string
 
-var chirpstack_tenantName = "Chirpstack" // Use the default "Chirpstack" tenant for WaziGate
+var chirpstack_tenantName = "ChirpStack" // Use the default "Chirpstack" tenant for WaziGate
 
 func connectToChirpStack() error {
 	var err error
@@ -89,6 +89,16 @@ func InitChirpstack() error {
 			if err != nil {
 				return fmt.Errorf("grpc: can not list tenants: %v", err)
 			}
+			
+			/*
+			// Print the response
+			log.Printf("ListTenantsResponse:")
+			log.Printf("TotalCount: %d\n", resp.TotalCount)
+			log.Println("Tenants:")
+			for _, tenant := range resp.Result {
+				log.Printf("ID: %s, Name: %s\n", tenant.Id, tenant.Name)
+			}
+			*/
 
 			// Iterate through the tenants list to find the tenant with the name "Chirpstack"
 			var tenantId string
