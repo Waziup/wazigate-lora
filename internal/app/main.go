@@ -261,7 +261,7 @@ func Serve() error {
 					return err
 				}
 				eui := txackEvt.DeviceInfo.DevEui
-				log.Printf("Received ack from %v", eui)
+				log.Printf("Received txack from %v", eui)
 
 			default:
 				log.Printf("Unknown MQTT topic %q.", msg.Topic)
@@ -314,7 +314,7 @@ func Serve() error {
 					log.Printf("Can not enqueue payload: %v", err)
 					continue
 				}
-				log.Printf("Payload enqueued: FCnt %d", resp.Id)
+				log.Printf("Payload enqueued: ID %d", resp.Id)
 			}
 
 		} else {

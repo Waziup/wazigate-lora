@@ -22,7 +22,7 @@ var apiToken string
 
 type APIToken string
 
-var chirpstack_tenantName = "ChirpStack" // Use the default "Chirpstack" tenant for WaziGate
+var chirpstack_tenantName = "ChirpStack" // Use the default "ChirpStack" tenant for WaziGate
 
 func connectToChirpStack() error {
 	var err error
@@ -100,7 +100,7 @@ func InitChirpstack() error {
 			}
 			*/
 
-			// Iterate through the tenants list to find the tenant with the name "Chirpstack"
+			// Iterate through the tenants list to find the tenant with the name "ChirpStack"
 			var tenantId string
 			// Get the ID of chirpstack_tenantName
 			for _, tenant := range resp.Result {
@@ -114,7 +114,7 @@ func InitChirpstack() error {
 				log.Printf("Cannot find tenant id for %s", chirpstack_tenantName)
 			}
 
-			// Set Config.Tenant.Id to the id of the "Chirpstack" tenant
+			// Set Config.Tenant.Id to the id of the "ChirpStack" tenant
 			Config.Tenant.Id = tenantId
 
 			dirty = true
@@ -122,46 +122,6 @@ func InitChirpstack() error {
 			//log.Printf("Config.Tenant.Id set to: %d", Config.Tenant.Id)
 			log.Printf("Tenant %q OK.", chirpstack_tenantName)
 		}
-
-		/*
-		{
-			asTenantServiceClient := asAPI.NewTenantServiceClient(chirpstack)
-
-			if Config.Tenant.Id == "" {
-				resp, err := asTenantServiceClient.Create(ctx, &asAPI.CreateTenantRequest{
-					Tenant: &Config.Tenant,
-				})
-				if err != nil {
-					return fmt.Errorf("grpc: can not create tenant: %v", err)
-				}
-				Config.Tenant.Id = resp.Id
-				log.Printf("Tenant has been created. ID: %v", Config.Tenant.Id)
-				dirty = true
-			} else {
-				resp, err := asTenantServiceClient.Get(ctx, &asAPI.GetTenantRequest{
-					Id: Config.Tenant.Id,
-				})
-				if err != nil {
-					if status.Code(err) == codes.NotFound {
-						log.Printf("Tenant id %v does not exist !?", Config.Tenant.Id)
-						resp, err := asTenantServiceClient.Create(ctx, &asAPI.CreateTenantRequest{
-							Tenant: &Config.Tenant,
-						})
-						if err != nil {
-							return fmt.Errorf("grpc: can not create tenant: %v", err)
-						}
-						Config.Tenant.Id = resp.Id
-						dirty = true
-						log.Printf("Tenant has been recreated. ID: %v", Config.Tenant.Id)
-					} else {
-						return fmt.Errorf("grpc: can not get Tenant: %v", err)
-					}
-				} else {
-					log.Printf("Tenant %q OK.", resp.Tenant.Name)
-				}
-			}
-		}
-		*/
 	}
 	{
 		{
