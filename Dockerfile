@@ -8,11 +8,6 @@ RUN apt-get update && apt-get install -y --no-install-recommends curl git libgnu
 RUN curl -sL https://deb.nodesource.com/setup_14.x | bash -
 RUN apt-get install -y --no-install-recommends nodejs
 
-COPY www/. /ui
-
-WORKDIR /ui/
-
-RUN npm i && npm run build
 
 ################################################################################
 
@@ -41,9 +36,5 @@ RUN apk --no-cache add ca-certificates curl
 # copy bin files (the wazigate-lora binary)
 COPY --from=bin /bin/wazigate-lora .
 
-# copy UI files (the wazigate-lora UI)
-COPY --from=ui /ui/dist ./www/dist
-COPY --from=ui /ui/img ./www/img
-COPY --from=ui /ui/index.html /ui/icon.png ./www/
 
 ENTRYPOINT ["./wazigate-lora"]
