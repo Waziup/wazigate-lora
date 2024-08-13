@@ -71,6 +71,8 @@
     "eu868",
   ]
 
+  # Mac-commands disabled.
+  #mac_commands_disabled=true
 
 # API interface configuration.
 [api]
