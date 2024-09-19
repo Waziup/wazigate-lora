@@ -284,12 +284,13 @@ func Serve() error {
 
 			data, err := wazigate.MarshalDevice(devID)
 			if err != nil {
-				log.Printf("Err Can marshal devie: %v", err)
+				log.Printf("Err Can marshal device: %v", err)
 				continue
 			}
-			log.Printf("Payload: [%d] %v", len(data), data)
-			// base64Data := base64.StdEncoding.EncodeToString([]byte(data))
-			// log.Printf("Base64: [%d] %s", len(base64Data), base64Data)
+			//log.Printf("Payload: [%d] %v", len(data), data)
+			base64Data := base64.StdEncoding.EncodeToString([]byte(msg.Data))
+			log.Printf("Base64: [%d] %s", len(base64Data), base64Data)
+			
 			devEUI := fmt.Sprintf("%016X", devEUIInt64)
 			ctx := context.Background()
 			asDeviceQueueService := asAPI.NewDeviceServiceClient(chirpstack)
@@ -303,11 +304,20 @@ func Serve() error {
 				}
 			}
 			{
+				/*
 				resp, err := asDeviceQueueService.Enqueue(ctx, &asAPI.EnqueueDeviceQueueItemRequest{
 					QueueItem: &asAPI.DeviceQueueItem{
 						DevEui: devEUI,
 						FPort:  100,
 						Data:   data,
+					},
+				})
+				*/
+				resp, err := asDeviceQueueService.Enqueue(ctx, &asAPI.EnqueueDeviceQueueItemRequest{
+					QueueItem: &asAPI.DeviceQueueItem{
+						DevEui: devEUI,
+						FPort:  100,
+						Data:   base64Data,
 					},
 				})
 				if err != nil {
