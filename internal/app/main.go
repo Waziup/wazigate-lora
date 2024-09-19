@@ -317,7 +317,7 @@ func Serve() error {
 					QueueItem: &asAPI.DeviceQueueItem{
 						DevEui: devEUI,
 						FPort:  100,
-						Data:   base64Data,
+						Data:   msg.Data,
 					},
 				})
 				if err != nil {
