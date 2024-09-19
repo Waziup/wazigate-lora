@@ -287,7 +287,7 @@ func Serve() error {
 				log.Printf("Err Can marshal device: %v", err)
 				continue
 			}
-			//log.Printf("Payload: [%d] %v", len(data), data)
+			log.Printf("Payload: [%d] %v", len(data), data)
 			base64Data := base64.StdEncoding.EncodeToString([]byte(msg.Data))
 			log.Printf("Base64: [%d] %s", len(base64Data), base64Data)
 			
