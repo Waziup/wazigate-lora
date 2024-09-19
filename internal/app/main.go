@@ -282,14 +282,22 @@ func Serve() error {
 			}
 			log.Printf("Waziup ID %s -> DevEUI %016X", devID, devEUIInt64)
 
-			data, err := wazigate.MarshalDevice(devID)
+			//data, err := wazigate.MarshalDevice(devID)
+			_, err := wazigate.MarshalDevice(devID)
 			if err != nil {
 				log.Printf("Err Can marshal device: %v", err)
 				continue
 			}
-			log.Printf("Payload: [%d] %v", len(data), data)
-			base64Data := base64.StdEncoding.EncodeToString([]byte(msg.Data))
-			log.Printf("Base64: [%d] %s", len(base64Data), base64Data)
+			//log.Printf("Payload: [%d] %v", len(data), data)
+			//log.Printf("Payload: [%d] %v", len(msg.Data), msg.Data)
+			//base64Data := base64.StdEncoding.EncodeToString([]byte(msg.Data))
+			//log.Printf("Base64: [%d] %s", len(base64Data), base64Data)
+
+			// Encode msginto Base64
+			firstEncoding := base64.StdEncoding.EncodeToString([]byte(msg.Data))
+			// Step 2: Encode the Base64 result again into Base64
+			doubleEncoded := base64.StdEncoding.EncodeToString([]byte(firstEncoding))
+			log.Printf("doubleEncoded: [%d] %v", len(doubleEncoded), doubleEncoded)
 			
 			devEUI := fmt.Sprintf("%016X", devEUIInt64)
 			ctx := context.Background()
@@ -317,7 +325,7 @@ func Serve() error {
 					QueueItem: &asAPI.DeviceQueueItem{
 						DevEui: devEUI,
 						FPort:  100,
-						Data:   msg.Data,
+						Data:   doubleEncoded,
 					},
 				})
 				if err != nil {
