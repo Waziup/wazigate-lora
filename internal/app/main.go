@@ -325,7 +325,7 @@ func Serve() error {
 					QueueItem: &asAPI.DeviceQueueItem{
 						DevEui: devEUI,
 						FPort:  100,
-						Data:   doubleEncoded,
+						Data:   []byte(doubleEncoded),
 					},
 				})
 				if err != nil {
