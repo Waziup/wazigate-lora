@@ -288,16 +288,9 @@ func Serve() error {
 				log.Printf("Err Can marshal device: %v", err)
 				continue
 			}
-			//log.Printf("Payload: [%d] %v", len(data), data)
-			//log.Printf("Payload: [%d] %v", len(msg.Data), msg.Data)
-			//base64Data := base64.StdEncoding.EncodeToString([]byte(msg.Data))
-			//log.Printf("Base64: [%d] %s", len(base64Data), base64Data)
-
-			// Encode msginto Base64
-			firstEncoding := base64.StdEncoding.EncodeToString([]byte(msg.Data))
-			// Step 2: Encode the Base64 result again into Base64
-			doubleEncoded := base64.StdEncoding.EncodeToString([]byte(firstEncoding))
-			log.Printf("doubleEncoded: [%d] %v", len(doubleEncoded), doubleEncoded)
+			log.Printf("Payload: [%d] %v", len(msg.Data), msg.Data)
+			base64Data := base64.StdEncoding.EncodeToString([]byte(msg.Data))
+			log.Printf("Base64: [%d] %s", len(base64Data), base64Data)
 			
 			devEUI := fmt.Sprintf("%016X", devEUIInt64)
 			ctx := context.Background()
@@ -312,20 +305,11 @@ func Serve() error {
 				}
 			}
 			{
-				/*
 				resp, err := asDeviceQueueService.Enqueue(ctx, &asAPI.EnqueueDeviceQueueItemRequest{
 					QueueItem: &asAPI.DeviceQueueItem{
 						DevEui: devEUI,
 						FPort:  100,
-						Data:   data,
-					},
-				})
-				*/
-				resp, err := asDeviceQueueService.Enqueue(ctx, &asAPI.EnqueueDeviceQueueItemRequest{
-					QueueItem: &asAPI.DeviceQueueItem{
-						DevEui: devEUI,
-						FPort:  100,
-						Data:   []byte(doubleEncoded),
+						Data:   []byte(base64Data),
 					},
 				})
 				if err != nil {
