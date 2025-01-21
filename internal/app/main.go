@@ -114,19 +114,19 @@ func Serve() error {
 					return err
 				}
 
-				log.Println("--- LoRaWAN Radio Rx")
+				log.Printf("--- LoRaWAN Radio Rx")
 				loraModInfo := gwUp.TxInfoLegacy.GetLoraModulationInfo()
-				log.Println("loraModInfo == %v", loraModInfo)
+				log.Printf("loraModInfo == %v", loraModInfo)
 				data := base64.StdEncoding.EncodeToString(gwUp.GetPhyPayload())
-				log.Println("data == %v", data)
+				log.Printf("data == %v", data)
 				//gwid := binary.BigEndian.Uint64(gwUp.RxInfo.GatewayId)
 				gwid := gwUp.RxInfo.GatewayId
-				log.Println("gwid == %v", gwid)
+				log.Printf("gwid == %v", gwid)
 				if loraModInfo != nil {
 					log.Printf("Forwarder %X: LoRa: %.2f MHz, SF%d BW%d CR%s, Data: %s", gwid, float64(gwUp.TxInfo.Frequency)/1000000, loraModInfo.SpreadingFactor, loraModInfo.Bandwidth, loraModInfo.CodeRate, data)
 				}
 				fskModInfo := gwUp.TxInfoLegacy.GetFskModulationInfo()
-				log.Println("fskModInfo == %s", fskModInfo)
+				log.Printf("fskModInfo == %s", fskModInfo)
 				if fskModInfo != nil {
 					log.Printf("Forwarder %X: FSK %.2f MHz, Bitrate: %d, Data: %s", gwid, float64(gwUp.TxInfo.Frequency)/1000000, fskModInfo.Datarate, data)
 				}
