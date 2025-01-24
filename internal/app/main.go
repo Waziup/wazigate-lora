@@ -115,21 +115,20 @@ func Serve() error {
 				}
 
 				log.Printf("--- LoRaWAN Radio Rx")
-				loraModInfo := gwUp.TxInfoLegacy.GetLoraModulationInfo()
-				log.Printf("loraModInfo == %v", loraModInfo)
-				data := base64.StdEncoding.EncodeToString(gwUp.GetPhyPayload())
-				log.Printf("data == %v", data)
-				//gwid := binary.BigEndian.Uint64(gwUp.RxInfo.GatewayId)
 				gwid := gwUp.RxInfo.GatewayId
-				log.Printf("gwid == %v", gwid)
-				if loraModInfo != nil {
-					log.Printf("Forwarder %X: LoRa: %.2f MHz, SF%d BW%d CR%s, Data: %s", gwid, float64(gwUp.TxInfo.Frequency)/1000000, loraModInfo.SpreadingFactor, loraModInfo.Bandwidth, loraModInfo.CodeRate, data)
+				payload := gwUp.GetPhyPayload()
+				base64Payload := base64.StdEncoding.EncodeToString(payload)
+
+				log.Printf("Forwarder: %X", gwid)
+
+				if lora := gwUp.TxInfo.Modulation.GetLora(); lora != nil {
+					log.Printf("LoRa: %.2f MHz, SF%d BW%d CR%s", float64(gwUp.TxInfo.Frequency)/1000000, lora.SpreadingFactor, lora.Bandwidth, lora.CodeRate)
 				}
-				fskModInfo := gwUp.TxInfoLegacy.GetFskModulationInfo()
-				log.Printf("fskModInfo == %s", fskModInfo)
-				if fskModInfo != nil {
-					log.Printf("Forwarder %X: FSK %.2f MHz, Bitrate: %d, Data: %s", gwid, float64(gwUp.TxInfo.Frequency)/1000000, fskModInfo.Datarate, data)
+				if fsk := gwUp.TxInfo.Modulation.GetFsk(); fsk != nil {
+					log.Printf("FSK: %.2f MHz, DR%d", float64(gwUp.TxInfo.Frequency)/1000000, fsk.Datarate)
 				}
+				log.Printf("Payload: [%d] %s", len(payload), base64Payload)
+
 			case "txack":
 				log.Printf("Tx completed.")
 				continue
@@ -161,64 +160,20 @@ func Serve() error {
 					log.Fatal(err)
 				}
 
-				// Convert byte slice to uint64
 				devEUI := binary.BigEndian.Uint64(bytes)
-				data := base64.StdEncoding.EncodeToString(uplinkEvt.GetData())
-				log.Printf("DevEUI %X: %s", devEUI, data)
 
 				devID := devEUIs[devEUI]
 				if devID == "" {
-					log.Printf("DevEUI %016X: No Waziup device for that EUI!", devEUI)
-				} else {
-					log.Printf("DevEUI %016X -> Waziup ID %s", devEUI, devID)
-
-					err = wazigate.UnmarshalDevice(devID, uplinkEvt.Data)
-					if err != nil {
-						log.Printf("Err Data upload to wazigate-edge failed: %v", err)
-					}
+					log.Printf("ChirpStack DevEUI \"%016X\": No Waziup device for that EUI!", devEUI)
+					break
 				}
 
-				// objJSON := uplinkEvt.GetObjectJson()
-				// if objJSON != "" {
-				// 	var lppData = make(map[string]map[string]interface{})
-				// 	err = json.Unmarshal([]byte(objJSON), &lppData)
-				// 	if err == nil {
-				// 		log.Printf("LPP Data: %+v", lppData)
-				// 		if devID != "" {
-				// 		LPPDATA:
-				// 			for sensorKind, data := range lppData {
-				// 				for channel, value := range data {
-				// 					sensorID := sensorKind + "_" + channel
-				// 					err := Wazigate.AddSensorValue(devID, sensorID, value)
-				// 					if err != nil {
-				// 						if IsNotExist(err) {
-				// 							err := Wazigate.AddSensor(devID, &Sensor{
-				// 								ID:    sensorID,
-				// 								Name:  sensorKind + " " + channel,
-				// 								Value: value,
-				// 								Meta: Meta{
-				// 									"createdBy": "wazigate-lora",
-				// 								},
-				// 							})
-				// 							if err != nil {
-				// 								log.Printf("Err Can not create sensor %q: %v", sensorID, err)
-				// 								continue LPPDATA
-				// 							} else {
-				// 								log.Printf("Sensor %q has been created as it did not exist.", sensorID)
-				// 							}
-				// 						} else {
-				// 							log.Printf("Err Can not create value on sensor %q: %v", sensorID, err)
-				// 						}
-				// 					}
-				// 				}
-				// 			}
-				// 		}
-				// 	} else {
-				// 		log.Printf("Err No LPP Data: %v\n%v", err, objJSON)
-				// 	}
-				// } else {
-				// 	log.Printf("Err The payload was not parsed by Chirpstack")
-				// }
+				log.Printf("ChirpStack DevEUI \"%016X\" -> Waziup Device \"%s\"", devEUI, devID)
+
+				err = wazigate.UnmarshalDevice(devID, uplinkEvt.Data)
+				if err != nil {
+					log.Printf("Err Data upload to wazigate-edge failed: %v", err)
+				}
 
 			case "status":
 				var statusEvt asIntegr.StatusEvent
@@ -229,6 +184,7 @@ func Serve() error {
 				eui := statusEvt.DeviceInfo.DevEui
 				battery := statusEvt.GetBatteryLevel()
 				log.Printf("Received status from %v: %v Battery", eui, battery)
+
 			case "error":
 				var errorEvt asIntegr.LogEvent
 				if err = Unmarshal(msg.Data, &errorEvt); err != nil {
@@ -238,6 +194,7 @@ func Serve() error {
 				eui := errorEvt.DeviceInfo.DevEui
 				e := errorEvt.Description
 				log.Printf("Received error from %v: %v", eui, e)
+
 			case "ack":
 				var ackEvt asIntegr.AckEvent
 				if err = Unmarshal(msg.Data, &ackEvt); err != nil {
@@ -246,6 +203,7 @@ func Serve() error {
 				}
 				eui := ackEvt.DeviceInfo.DevEui
 				log.Printf("Received ack from %v", eui)
+
 			case "join":
 				var joinEvt asIntegr.JoinEvent
 				if err = Unmarshal(msg.Data, &joinEvt); err != nil {
@@ -254,6 +212,7 @@ func Serve() error {
 				}
 				eui := joinEvt.DeviceInfo.DevEui
 				log.Printf("Device %v joined the network.", eui)
+
 			case "txack":
 				var txackEvt asIntegr.TxAckEvent
 				if err = Unmarshal(msg.Data, &txackEvt); err != nil {
@@ -271,27 +230,29 @@ func Serve() error {
 
 			// Topic: devices/+/actuators/+/value
 		} else if len(topic) == 5 && topic[0] == "devices" && topic[2] == "actuators" {
+
+			log.Println("--- WaziGate Device Actuation")
+
 			// This topic is served by the Wazigate Edge and emits actuator values.
 			// If the actuator belongs to a LoRaWAN device (a device with lorawan metadata)
 			// then we will forward the value as payload to ChirpStack.
 			devID := topic[1]
 			devEUIInt64, ok := waziupID2devEUI(devID)
 			if !ok {
-				log.Printf("Waziup ID %s -> DevEUI ?? (no matching LoRaWAN device)", devID)
+				log.Printf("Waziup Device \"%s\" -> No ChirpStack DevEUI ?? (no matching LoRaWAN device)", devID)
 				continue
 			}
-			log.Printf("Waziup ID %s -> DevEUI %016X", devID, devEUIInt64)
+			log.Printf("Waziup Device \"%s\" -> ChirpStack DevEUI \"%016X\"", devID, devEUIInt64)
 
-			//data, err := wazigate.MarshalDevice(devID)
 			_, err := wazigate.MarshalDevice(devID)
 			if err != nil {
 				log.Printf("Err Can marshal device: %v", err)
 				continue
 			}
-			log.Printf("Payload: [%d] %v", len(msg.Data), msg.Data)
+			log.Printf("  Payload: [%d] %v", len(msg.Data), msg.Data)
 			base64Data := base64.StdEncoding.EncodeToString([]byte(msg.Data))
-			log.Printf("Base64: [%d] %s", len(base64Data), base64Data)
-			
+			log.Printf("  Base64: [%d] %s", len(base64Data), base64Data)
+
 			devEUI := fmt.Sprintf("%016X", devEUIInt64)
 			ctx := context.Background()
 			asDeviceQueueService := asAPI.NewDeviceServiceClient(chirpstack)
@@ -309,14 +270,15 @@ func Serve() error {
 					QueueItem: &asAPI.DeviceQueueItem{
 						DevEui: devEUI,
 						FPort:  100,
-						Data:   []byte(base64Data),
+						Data:   msg.Data,
 					},
 				})
 				if err != nil {
 					log.Printf("Can not enqueue payload: %v", err)
 					continue
 				}
-				log.Printf("Payload enqueued: ID %d", resp.Id)
+
+				log.Printf("Payload enqueued. Id %s", resp.Id)
 			}
 
 		} else {
@@ -324,7 +286,6 @@ func Serve() error {
 			continue
 		}
 	}
-	return nil
 }
 
 // Marshal calls protocol buffer's JSON marshaler.
@@ -337,7 +298,9 @@ func Marshal(msg proto.Message) ([]byte, error) {
 
 // Unmarshal calls protocol buffer's JSON unmarshaler.
 func Unmarshal(data []byte, msg proto.Message) error {
-	return jsonpb.Unmarshal(bytes.NewReader(data), msg)
+	var unmarshaler jsonpb.Unmarshaler
+	unmarshaler.AllowUnknownFields = true
+	return unmarshaler.Unmarshal(bytes.NewReader(data), msg)
 }
 
 var devEUIs = map[uint64]string{}
@@ -424,7 +387,7 @@ func checkWaziupDevice(id string, meta waziup.Meta) error {
 	}
 	devEUIInt64, err := strconv.ParseUint(devEUI, 16, 64)
 	if err != nil {
-		log.Printf("Err Device %q DevEUI: %v", id, err)
+		log.Printf("Err Device %q DevEUI: invalid value %q", id, devEUI)
 		return nil
 	}
 	devEUIs[devEUIInt64] = id
