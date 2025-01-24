@@ -1,40 +1,23 @@
-FROM python:2 AS ui
-# pyhton is required to build libsass for node-sass
-# https://github.com/sass/node-sass/issues/3033
-
-# libgnutls30 is required for
-# https://github.com/nodesource/distributions/issues/1266
-RUN apt-get update && apt-get install -y --no-install-recommends curl git libgnutls30
-RUN curl -sL https://deb.nodesource.com/setup_14.x | bash -
-RUN apt-get install -y --no-install-recommends nodejs
-
-
-################################################################################
-
-FROM golang:1.19-alpine AS bin
-
-ENV CGO_ENABLED=0
-
-COPY . /bin
-
-WORKDIR /bin
-
-
-RUN apk add --no-cache ca-certificates git && \
-    go build -a -installsuffix cgo -ldflags "-s -w" -buildvcs=false -o wazigate-lora ./cmd/wazigate-lora
-
-#RUN apk add --no-cache ca-certificates git
-#RUN go build -a -installsuffix cgo -ldflags "-s -w" -o wazigate-lora ./cmd/wazigate-lora
-################################################################################
-
-
-FROM alpine:latest AS app
+FROM golang AS golang
 
 WORKDIR /root/
-RUN apk --no-cache add ca-certificates curl
 
-# copy bin files (the wazigate-lora binary)
-COPY --from=bin /bin/wazigate-lora .
+# Install dependencies
+COPY go.mod go.sum ./
+RUN go mod download
 
+# Build the binary
+COPY internal internal
+COPY cmd cmd
+ENV CGO_ENABLED=0
+RUN go build -a -installsuffix cgo -ldflags "-s -w" -buildvcs=false -o wazigate-lora ./cmd/wazigate-lora
 
-ENTRYPOINT ["./wazigate-lora"]
+#
+
+FROM scratch
+
+COPY --from=golang /root/wazigate-lora /wazigate-lora
+
+HEALTHCHECK --interval=30s --timeout=30s --start-period=5s --retries=3 CMD [ "/wazigate-lora", "healthcheck" ]
+
+ENTRYPOINT ["/wazigate-lora"]
