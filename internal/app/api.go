@@ -5,12 +5,16 @@ import (
 	"encoding/json"
 	"net/http"
 
+	"github.com/Waziup/wazigate-lora/internal/pkg/waziapp"
 	asAPI "github.com/chirpstack/chirpstack/api/go/v4/api"
 )
 
 func serveAPI(resp http.ResponseWriter, req *http.Request) {
 
 	switch req.URL.Path {
+	case waziapp.HealthcheckPath:
+		resp.WriteHeader(http.StatusNoContent)
+		return
 	case "/randomDevAddr":
 		if req.Method == http.MethodPost {
 			decoder := json.NewDecoder(req.Body)

@@ -17,6 +17,7 @@ import (
 	_ "embed"
 	"fmt"
 	"log"
+	"os"
 	"time"
 
 	"github.com/Waziup/wazigate-lora/internal/app"
@@ -29,6 +30,17 @@ var packageJSON []byte
 
 func main() {
 	log.SetFlags(0)
+	////////////////////
+
+	if len(os.Args) == 2 && os.Args[1] == "healthcheck" {
+		if err := waziapp.Healtcheck(); err != nil {
+			log.Fatalf("Healthcheck failed: %v", err)
+		}
+		return
+	}
+
+	////////////////////
+
 	if err := waziapp.ProvidePackageJSON(packageJSON); err != nil {
 		log.Fatalf("Can not provide package.json: %v", err)
 	}

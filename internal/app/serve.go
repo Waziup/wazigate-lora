@@ -11,8 +11,13 @@ func ServeHTTP(resp http.ResponseWriter, req *http.Request) {
 		ResponseWriter: resp,
 		statusCode:     200,
 	}
+
 	serveAPI(&w, req)
-	log.Printf("[%s] %d, %s %s s:%d", req.RemoteAddr, w.statusCode, req.Method, req.RequestURI, w.size)
+
+	isHealthched := w.statusCode == http.StatusNoContent && req.URL.Path == "/healthcheck" && req.RemoteAddr == "@"
+	if !isHealthched {
+		log.Printf("[%s] %d, %s %s s:%d", req.RemoteAddr, w.statusCode, req.Method, req.RequestURI, w.size)
+	}
 }
 
 type wrapper struct {
