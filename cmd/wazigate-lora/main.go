@@ -44,6 +44,7 @@ func main() {
 	if err := waziapp.ProvidePackageJSON(packageJSON); err != nil {
 		log.Fatalf("Can not provide package.json: %v", err)
 	}
+	log.Printf("Starting...")
 	log.Printf("This is the WaziGate-LoRa App (%s) v%s.", waziapp.Name, waziapp.Version)
 
 	if err := app.ReadConfig(); err != nil {
