@@ -16,3 +16,4 @@ As a developer you can build & run it this way:
 3. Then to run it:
 
 `docker-compose up -d`
+
