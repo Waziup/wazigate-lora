@@ -73,14 +73,28 @@ func Serve() error {
 	wazigate.Subscribe("devices/+/actuators/+/value")
 	wazigate.Subscribe("devices/+/actuators/+/values")
 	wazigate.Subscribe("devices/+/meta")
+	wazigate.Subscribe("devices")
 	for {
 		msg, err := wazigate.Message()
 		if err != nil {
 			return err
 		}
 		topic := strings.Split(msg.Topic, "/")
-		// Topic: devices/+/meta
-		if len(topic) == 3 && topic[0] == "devices" && topic[2] == "meta" {
+
+		// Topic: devices
+		if len(topic) == 1 && topic[0] == "devices" {
+			// A new device was added to the Wazigate Edge.
+
+			var device waziup.Device
+			if err = json.Unmarshal(msg.Data, &device); err != nil {
+				log.Printf("Err Can not parse device: %v", err)
+				log.Printf("Err msg: %s", msg.Data)
+				continue
+			}
+			checkWaziupDevice(device.ID, device.Meta)
+
+			// Topic: devices/+/meta
+		} else if len(topic) == 3 && topic[0] == "devices" && topic[2] == "meta" {
 			// A device's metadata changed. If the device is a LoRaWAN device we will update
 			// the DevEUIs map here with the DevEUI from the metadata.
 
