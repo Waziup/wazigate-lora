@@ -53,11 +53,38 @@ func connectToChirpStack() error {
 	return nil
 }
 
+func refreshChirpstackToken() {
+	for {
+		time.Sleep(chirpstackTokenRefreshInterval)
+		internalClient := asAPI.NewInternalServiceClient(chirpstack)
+		loginReq := &asAPI.LoginRequest{
+			Email:    "admin",
+			Password: "admin",
+		}
+		res, err := internalClient.Login(context.Background(), loginReq)
+		if err != nil {
+			return fmt.Errorf("grpc: can not login: %v", err)
+		}
+
+		defer chirpstack.Close()
+		chirpstack, err = grpc.Dial("waziup.wazigate-lora.chirpstack-v4:8080",
+			grpc.WithBlock(),
+			grpc.WithPerRPCCredentials(APIToken(APIToken(res.Jwt))),
+			grpc.WithTransportCredentials(insecure.NewCredentials()))
+		if err != nil {
+			return fmt.Errorf("grpc: can not dial: %v", err)
+		}
+		return nil
+	}
+}
+
 func InitChirpstack() error {
 
 	if err := connectToChirpStack(); err != nil {
 		return err
 	}
+
+	go refreshChirpstackToken()
 	log.Println("--- Init ChirpStack")
 
 	dirty := false
