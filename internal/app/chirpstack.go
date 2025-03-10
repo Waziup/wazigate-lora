@@ -53,7 +53,7 @@ func connectToChirpStack() error {
 	return nil
 }
 
-func refreshChirpstackToken() {
+func refreshChirpstackToken() error{
 	for {
 		time.Sleep(chirpstackTokenRefreshInterval)
 		internalClient := asAPI.NewInternalServiceClient(chirpstack)
