@@ -12,7 +12,7 @@ func ServeHTTP(resp http.ResponseWriter, req *http.Request) {
 		statusCode:     200,
 	}
 	// Print the URL path before calling serveAPI
-	log.Printf("Calling serveAPI with URL: %s", req.URL.Path)
+	//log.Printf("Calling serveAPI with URL: %s", req.URL.Path)
 	serveAPI(&w, req)
 
 	isHealthched := w.statusCode == http.StatusNoContent && req.URL.Path == "/healthcheck" && req.RemoteAddr == "@"
