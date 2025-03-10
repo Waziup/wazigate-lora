@@ -84,7 +84,7 @@ func InitChirpstack() error {
 		return err
 	}
 
-	log.Println("-- Refreshing ChirpStack token --")
+	//log.Println("-- Refreshing ChirpStack token --")
 	go refreshChirpstackToken()
 	log.Println("--- Init ChirpStack")
 
