@@ -18,10 +18,10 @@ var chirpstack *grpc.ClientConn
 
 const chirpstackTokenRefreshInterval = 5 * time.Minute
 
-var apiToken string
-
 type APIToken string
 
+var chirpstack_username = "admin" 	// default
+var chirpstack_password = "login" 	// default
 var chirpstack_tenantName = "ChirpStack" // Use the default "ChirpStack" tenant for WaziGate
 
 func connectToChirpStack() error {
@@ -34,8 +34,8 @@ func connectToChirpStack() error {
 	}
 	internalClient := asAPI.NewInternalServiceClient(chirpstack)
 	loginReq := &asAPI.LoginRequest{
-		Email:    "admin",
-		Password: "admin",
+		Email:    chirpstack_username,
+		Password: chirpstack_password,
 	}
 	res, err := internalClient.Login(context.Background(), loginReq)
 	if err != nil {
@@ -53,28 +53,36 @@ func connectToChirpStack() error {
 	return nil
 }
 
-func refreshChirpstackToken() error{
+func refreshChirpstackToken() {
 	for {
 		time.Sleep(chirpstackTokenRefreshInterval)
+
 		internalClient := asAPI.NewInternalServiceClient(chirpstack)
+
 		loginReq := &asAPI.LoginRequest{
-			Email:    "admin",
-			Password: "admin",
+			Email:    chirpstack_username,
+			Password: chirpstack_password,
 		}
 		res, err := internalClient.Login(context.Background(), loginReq)
 		if err != nil {
-			return fmt.Errorf("grpc: can not login: %v", err)
+			log.Printf("grpc: token refresh login failed: %v", err)
+			continue
 		}
 
-		defer chirpstack.Close()
+		// Close old connection
+		if chirpstack != nil {
+			_ = chirpstack.Close()
+		}
+
 		chirpstack, err = grpc.Dial("waziup.wazigate-lora.chirpstack-v4:8080",
 			grpc.WithBlock(),
-			grpc.WithPerRPCCredentials(APIToken(APIToken(res.Jwt))),
+			grpc.WithPerRPCCredentials(APIToken(res.Jwt)), 
 			grpc.WithTransportCredentials(insecure.NewCredentials()))
 		if err != nil {
-			return fmt.Errorf("grpc: can not dial: %v", err)
+			log.Printf("grpc: token refresh dial failed: %v", err)
+		} else {
+			log.Println("grpc: token refreshed successfully")
 		}
-		return nil
 	}
 }
 
