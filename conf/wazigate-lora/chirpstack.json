@@ -5,7 +5,7 @@
     },
     "tenant": {
 		"id": "",
-        "name": "chirpstack",
+        "name": "Chirpstack",
         "description": "Local Chirpstack WaziGate Tenant",
         "can_have_gateways": true
     },

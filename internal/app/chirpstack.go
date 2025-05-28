@@ -18,10 +18,10 @@ var chirpstack *grpc.ClientConn
 
 const chirpstackTokenRefreshInterval = 5 * time.Minute
 
-var apiToken string
-
 type APIToken string
 
+var chirpstack_username = "admin" 	// default
+var chirpstack_password = "login" 	// default
 var chirpstack_tenantName = "ChirpStack" // Use the default "ChirpStack" tenant for WaziGate
 
 func connectToChirpStack() error {
@@ -34,14 +34,16 @@ func connectToChirpStack() error {
 	}
 	internalClient := asAPI.NewInternalServiceClient(chirpstack)
 	loginReq := &asAPI.LoginRequest{
-		Email:    "admin",
-		Password: "admin",
+		Email:    chirpstack_username,
+		Password: chirpstack_password,
 	}
-	res, err := internalClient.Login(context.Background(), loginReq)
+	resp, err := internalClient.Login(context.Background(), loginReq)
 	if err != nil {
 		return fmt.Errorf("grpc: can not login: %v", err)
 	}
-
+	
+	jwtCredentials.SetToken(resp.Jwt)
+	/*
 	defer chirpstack.Close()
 	chirpstack, err = grpc.Dial("waziup.wazigate-lora.chirpstack-v4:8080",
 		grpc.WithBlock(),
@@ -50,7 +52,44 @@ func connectToChirpStack() error {
 	if err != nil {
 		return fmt.Errorf("grpc: can not dial: %v", err)
 	}
+	*/
+
 	return nil
+}
+
+func refreshChirpstackToken() {
+	for {
+		time.Sleep(chirpstackTokenRefreshInterval)
+
+		internalClient := asAPI.NewInternalServiceClient(chirpstack)
+
+		loginReq := &asAPI.LoginRequest{
+			Email:    chirpstack_username,
+			Password: chirpstack_password,
+		}
+		resp, err := internalClient.Login(context.Background(), loginReq)
+		if err != nil {
+			log.Printf("grpc: token refresh login failed: %v", err)
+			//continue
+		}
+		jwtCredentials.SetToken(resp.Jwt)
+		/*
+		// Close old connection
+		if chirpstack != nil {
+			_ = chirpstack.Close()
+		}
+
+		chirpstack, err = grpc.Dial("waziup.wazigate-lora.chirpstack-v4:8080",
+			grpc.WithBlock(),
+			grpc.WithPerRPCCredentials(APIToken(res.Jwt)), 
+			grpc.WithTransportCredentials(insecure.NewCredentials()))
+		if err != nil {
+			log.Printf("grpc: token refresh dial failed: %v", err)
+		} else {
+			log.Println("grpc: token refreshed successfully")
+		}
+		*/
+	}
 }
 
 func InitChirpstack() error {
@@ -58,6 +97,9 @@ func InitChirpstack() error {
 	if err := connectToChirpStack(); err != nil {
 		return err
 	}
+
+	//log.Println("-- Refreshing ChirpStack token --")
+	go refreshChirpstackToken()
 	log.Println("--- Init ChirpStack")
 
 	dirty := false
@@ -391,7 +433,7 @@ func setWaziDevActivation(devEUI string, devAddr string, nwkSEncKey string, appS
 }
 
 // //////////////////////////////////////////////////////////////////////////////
-
+/*
 func (a APIToken) GetRequestMetadata(ctx context.Context, url ...string) (map[string]string, error) {
 	return map[string]string{
 		"authorization": fmt.Sprintf("Bearer %s", a),
@@ -400,4 +442,29 @@ func (a APIToken) GetRequestMetadata(ctx context.Context, url ...string) (map[st
 
 func (a APIToken) RequireTransportSecurity() bool {
 	return false
+}
+*/
+
+var jwtCredentials = &JWTCredentials{}
+
+// JWTCredentials provides JWT credentials for gRPC
+type JWTCredentials struct {
+	token string
+}
+
+// GetRequestMetadata returns the meta-data for a request.
+func (j *JWTCredentials) GetRequestMetadata(ctx context.Context, url ...string) (map[string]string, error) {
+	return map[string]string{
+		"authorization": fmt.Sprintf("Bearer %s", j.token),
+	}, nil
+}
+
+// RequireTransportSecurity ...
+func (j *JWTCredentials) RequireTransportSecurity() bool {
+	return false
+}
+
+// SetToken sets the JWT token.
+func (j *JWTCredentials) SetToken(token string) {
+	j.token = token
 }
