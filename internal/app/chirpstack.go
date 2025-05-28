@@ -37,11 +37,13 @@ func connectToChirpStack() error {
 		Email:    chirpstack_username,
 		Password: chirpstack_password,
 	}
-	res, err := internalClient.Login(context.Background(), loginReq)
+	resp, err := internalClient.Login(context.Background(), loginReq)
 	if err != nil {
 		return fmt.Errorf("grpc: can not login: %v", err)
 	}
-
+	
+	jwtCredentials.SetToken(resp.Jwt)
+	/*
 	defer chirpstack.Close()
 	chirpstack, err = grpc.Dial("waziup.wazigate-lora.chirpstack-v4:8080",
 		grpc.WithBlock(),
@@ -50,6 +52,8 @@ func connectToChirpStack() error {
 	if err != nil {
 		return fmt.Errorf("grpc: can not dial: %v", err)
 	}
+	*/
+
 	return nil
 }
 
@@ -63,12 +67,13 @@ func refreshChirpstackToken() {
 			Email:    chirpstack_username,
 			Password: chirpstack_password,
 		}
-		res, err := internalClient.Login(context.Background(), loginReq)
+		resp, err := internalClient.Login(context.Background(), loginReq)
 		if err != nil {
 			log.Printf("grpc: token refresh login failed: %v", err)
-			continue
+			//continue
 		}
-
+		jwtCredentials.SetToken(resp.Jwt)
+		/*
 		// Close old connection
 		if chirpstack != nil {
 			_ = chirpstack.Close()
@@ -83,6 +88,7 @@ func refreshChirpstackToken() {
 		} else {
 			log.Println("grpc: token refreshed successfully")
 		}
+		*/
 	}
 }
 
@@ -427,7 +433,7 @@ func setWaziDevActivation(devEUI string, devAddr string, nwkSEncKey string, appS
 }
 
 // //////////////////////////////////////////////////////////////////////////////
-
+/*
 func (a APIToken) GetRequestMetadata(ctx context.Context, url ...string) (map[string]string, error) {
 	return map[string]string{
 		"authorization": fmt.Sprintf("Bearer %s", a),
@@ -436,4 +442,29 @@ func (a APIToken) GetRequestMetadata(ctx context.Context, url ...string) (map[st
 
 func (a APIToken) RequireTransportSecurity() bool {
 	return false
+}
+*/
+
+var jwtCredentials = &JWTCredentials{}
+
+// JWTCredentials provides JWT credentials for gRPC
+type JWTCredentials struct {
+	token string
+}
+
+// GetRequestMetadata returns the meta-data for a request.
+func (j *JWTCredentials) GetRequestMetadata(ctx context.Context, url ...string) (map[string]string, error) {
+	return map[string]string{
+		"authorization": fmt.Sprintf("Bearer %s", j.token),
+	}, nil
+}
+
+// RequireTransportSecurity ...
+func (j *JWTCredentials) RequireTransportSecurity() bool {
+	return false
+}
+
+// SetToken sets the JWT token.
+func (j *JWTCredentials) SetToken(token string) {
+	j.token = token
 }
