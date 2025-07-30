@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"log"
-	"time"
 
 	asAPI "github.com/chirpstack/chirpstack/api/go/v4/api"
 	"github.com/chirpstack/chirpstack/api/go/v4/common"
@@ -14,86 +13,66 @@ import (
 	"google.golang.org/grpc/status"
 )
 
-var chirpstack *grpc.ClientConn
-
-const chirpstackTokenRefreshInterval = 5 * time.Minute
-
 type APIToken string
 
-var chirpstack_username = "admin" 	// default
-var chirpstack_password = "admin" 	// default
-var chirpstack_tenantName = "ChirpStack" // Use the default "ChirpStack" tenant for WaziGate
+var chirpstackUsername = "admin"        // default
+var chirpstackPassword = "admin"        // default
+var chirpstackTenantName = "ChirpStack" // Use the default "ChirpStack" tenant for WaziGate
 
-func connectToChirpStack() error {
+func connectToChirpStack() (*grpc.ClientConn, error) {
 	var err error
-	chirpstack, err = grpc.Dial("waziup.wazigate-lora.chirpstack-v4:8080",
+
+	conn, err := grpc.Dial("waziup.wazigate-lora.chirpstack-v4:8080",
 		grpc.WithBlock(),
 		grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
-		return fmt.Errorf("grpc: can not dial: %v", err)
+		return nil, fmt.Errorf("grpc: can not dial: %v", err)
 	}
-	internalClient := asAPI.NewInternalServiceClient(chirpstack)
+
+	internalClient := asAPI.NewInternalServiceClient(conn)
 	loginReq := &asAPI.LoginRequest{
-		Email:    chirpstack_username,
-		Password: chirpstack_password,
+		Email:    chirpstackUsername,
+		Password: chirpstackPassword,
 	}
 	res, err := internalClient.Login(context.Background(), loginReq)
 	if err != nil {
-		return fmt.Errorf("grpc: can not login: %v", err)
+		return nil, fmt.Errorf("grpc: can not login: %v", err)
+	}
+	token := res.Jwt
+	if err := conn.Close(); err != nil {
+		return nil, fmt.Errorf("grpc: can not close connection: %v", err)
 	}
 
-	defer chirpstack.Close()
-	chirpstack, err = grpc.Dial("waziup.wazigate-lora.chirpstack-v4:8080",
+	conn, err = grpc.Dial("waziup.wazigate-lora.chirpstack-v4:8080",
 		grpc.WithBlock(),
-		grpc.WithPerRPCCredentials(APIToken(APIToken(res.Jwt))),
+		grpc.WithPerRPCCredentials(APIToken(APIToken(token))),
 		grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
-		return fmt.Errorf("grpc: can not dial: %v", err)
+		return nil, fmt.Errorf("grpc: can not dial: %v", err)
 	}
-	return nil
+
+	return conn, nil
 }
 
-func refreshChirpstackToken() {
-	for {
-		time.Sleep(chirpstackTokenRefreshInterval)
-
-		internalClient := asAPI.NewInternalServiceClient(chirpstack)
-
-		loginReq := &asAPI.LoginRequest{
-			Email:    chirpstack_username,
-			Password: chirpstack_password,
-		}
-		res, err := internalClient.Login(context.Background(), loginReq)
-		if err != nil {
-			log.Printf("grpc: token refresh login failed: %v", err)
-			continue
-		}
-
-		// Close old connection
-		if chirpstack != nil {
-			_ = chirpstack.Close()
-		}
-
-		chirpstack, err = grpc.Dial("waziup.wazigate-lora.chirpstack-v4:8080",
-			grpc.WithBlock(),
-			grpc.WithPerRPCCredentials(APIToken(res.Jwt)), 
-			grpc.WithTransportCredentials(insecure.NewCredentials()))
-		if err != nil {
-			log.Printf("grpc: token refresh dial failed: %v", err)
-		} else {
-			log.Println("grpc: token refreshed successfully")
-		}
-	}
-}
+// func refreshChirpstackToken() {
+// 	for {
+// 		time.Sleep(chirpstackTokenRefreshInterval)
+// 		err := connectToChirpStack()
+// 		if err != nil {
+// 			log.Printf("grpc: connect failed: %v", err)
+// 			continue
+// 		}
+// 	}
+// }
 
 func InitChirpstack() error {
 
-	if err := connectToChirpStack(); err != nil {
-		return err
+	conn, err := connectToChirpStack()
+	if err != nil {
+		return fmt.Errorf("grpc: can not connect to ChirpStack: %v", err)
 	}
+	defer conn.Close()
 
-	//log.Println("-- Refreshing ChirpStack token --")
-	go refreshChirpstackToken()
 	log.Println("--- Init ChirpStack")
 
 	dirty := false
@@ -112,8 +91,8 @@ func InitChirpstack() error {
 	ctx := context.Background()
 	{
 		{
-			asTenantServiceClient := asAPI.NewTenantServiceClient(chirpstack)
-			
+			asTenantServiceClient := asAPI.NewTenantServiceClient(conn)
+
 			req := &asAPI.ListTenantsRequest{
 				Limit:  100,
 				Offset: 0,
@@ -125,43 +104,43 @@ func InitChirpstack() error {
 			if err != nil {
 				return fmt.Errorf("grpc: can not list tenants: %v", err)
 			}
-			
+
 			/*
-			// Print the response
-			log.Printf("ListTenantsResponse:")
-			log.Printf("TotalCount: %d\n", resp.TotalCount)
-			log.Println("Tenants:")
-			for _, tenant := range resp.Result {
-				log.Printf("ID: %s, Name: %s\n", tenant.Id, tenant.Name)
-			}
+				// Print the response
+				log.Printf("ListTenantsResponse:")
+				log.Printf("TotalCount: %d\n", resp.TotalCount)
+				log.Println("Tenants:")
+				for _, tenant := range resp.Result {
+					log.Printf("ID: %s, Name: %s\n", tenant.Id, tenant.Name)
+				}
 			*/
 
 			// Iterate through the tenants list to find the tenant with the name "ChirpStack"
 			var tenantId string
 			// Get the ID of chirpstack_tenantName
 			for _, tenant := range resp.Result {
-				if tenant.Name == chirpstack_tenantName {
+				if tenant.Name == chirpstackTenantName {
 					tenantId = tenant.Id
 					break
 				}
 			}
 
 			if tenantId == "" {
-				log.Printf("Cannot find tenant id for %s", chirpstack_tenantName)
+				log.Printf("Cannot find tenant id for %s", chirpstackTenantName)
 			}
 
 			// Set Config.Tenant.Id to the id of the "ChirpStack" tenant
 			Config.Tenant.Id = tenantId
 
 			dirty = true
-			
+
 			//log.Printf("Config.Tenant.Id set to: %d", Config.Tenant.Id)
-			log.Printf("Tenant %q OK.", chirpstack_tenantName)
+			log.Printf("Tenant %q OK.", chirpstackTenantName)
 		}
 	}
 	{
 		{
-			asGatewayService := asAPI.NewGatewayServiceClient(chirpstack)
+			asGatewayService := asAPI.NewGatewayServiceClient(conn)
 			Config.Gateway.TenantId = Config.Tenant.Id
 
 			if Config.Gateway.GatewayId == "" {
@@ -197,7 +176,7 @@ func InitChirpstack() error {
 		}
 	}
 	{
-		asApplicationService := asAPI.NewApplicationServiceClient(chirpstack)
+		asApplicationService := asAPI.NewApplicationServiceClient(conn)
 		Config.Application.TenantId = Config.Tenant.Id
 
 		resp, err := asApplicationService.List(ctx, &asAPI.ListApplicationsRequest{
@@ -252,7 +231,7 @@ func InitChirpstack() error {
 		}
 	}
 	{
-		asDeviceProfileService := asAPI.NewDeviceProfileServiceClient(chirpstack)
+		asDeviceProfileService := asAPI.NewDeviceProfileServiceClient(conn)
 		for i, deviceProfile := range Config.DeviceProfiles {
 			if deviceProfile.Id == "" {
 				deviceProfile := asAPI.DeviceProfile{
@@ -317,8 +296,15 @@ func InitChirpstack() error {
 
 func setDeviceProfileWaziDev(devEUI string, id string) error {
 	ctx := context.Background()
+
+	conn, err := connectToChirpStack()
+	if err != nil {
+		return fmt.Errorf("grpc: can not connect to ChirpStack: %v", err)
+	}
+	defer conn.Close()
+
 	deviceProfileId := Config.DeviceProfiles[0].Id
-	deviceClient := asAPI.NewDeviceServiceClient(chirpstack)
+	deviceClient := asAPI.NewDeviceServiceClient(conn)
 	resp, err := deviceClient.Get(ctx, &asAPI.GetDeviceRequest{
 		DevEui: devEUI,
 	})
@@ -367,7 +353,14 @@ func setDeviceProfileWaziDev(devEUI string, id string) error {
 
 func setWaziDevActivation(devEUI string, devAddr string, nwkSEncKey string, appSKey string) error {
 	ctx := context.Background()
-	deviceClient := asAPI.NewDeviceServiceClient(chirpstack)
+
+	conn, err := connectToChirpStack()
+	if err != nil {
+		return fmt.Errorf("grpc: can not connect to ChirpStack: %v", err)
+	}
+	defer conn.Close()
+
+	deviceClient := asAPI.NewDeviceServiceClient(conn)
 	r, err := deviceClient.GetActivation(ctx, &asAPI.GetDeviceActivationRequest{
 		DevEui: devEUI,
 	})

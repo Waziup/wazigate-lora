@@ -11,6 +11,13 @@ import (
 
 func serveAPI(resp http.ResponseWriter, req *http.Request) {
 
+	conn, err := connectToChirpStack()
+	if err != nil {
+		serveError(resp, err)
+		return
+	}
+	defer conn.Close()
+
 	switch req.URL.Path {
 	case waziapp.HealthcheckPath:
 		resp.WriteHeader(http.StatusNoContent)
@@ -23,7 +30,7 @@ func serveAPI(resp http.ResponseWriter, req *http.Request) {
 				serveError(resp, err)
 				return
 			}
-			deviceService := asAPI.NewDeviceServiceClient(chirpstack)
+			deviceService := asAPI.NewDeviceServiceClient(conn)
 			r, err := deviceService.GetRandomDevAddr(context.Background(), &asAPI.GetRandomDevAddrRequest{
 				DevEui: devEUI,
 			})
@@ -37,7 +44,7 @@ func serveAPI(resp http.ResponseWriter, req *http.Request) {
 	case "/profiles":
 		switch req.Method {
 		case http.MethodGet:
-			deviceProfileService := asAPI.NewDeviceProfileServiceClient(chirpstack)
+			deviceProfileService := asAPI.NewDeviceProfileServiceClient(conn)
 			r, err := deviceProfileService.List(context.Background(), &asAPI.ListDeviceProfilesRequest{
 				Limit:    1000,
 				TenantId: Config.Tenant.Id,
@@ -55,7 +62,7 @@ func serveAPI(resp http.ResponseWriter, req *http.Request) {
 				serveError(resp, err)
 				return
 			}
-			deviceProfileService := asAPI.NewDeviceProfileServiceClient(chirpstack)
+			deviceProfileService := asAPI.NewDeviceProfileServiceClient(conn)
 			deviceProfile.TenantId = Config.Tenant.Id
 			if deviceProfile.Id == "" {
 				r, err := deviceProfileService.Create(context.Background(), &asAPI.CreateDeviceProfileRequest{

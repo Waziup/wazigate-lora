@@ -269,7 +269,14 @@ func Serve() error {
 
 			devEUI := fmt.Sprintf("%016X", devEUIInt64)
 			ctx := context.Background()
-			asDeviceQueueService := asAPI.NewDeviceServiceClient(chirpstack)
+
+			conn, err := connectToChirpStack()
+			if err != nil {
+				return fmt.Errorf("grpc: can not connect to ChirpStack: %v", err)
+			}
+			defer conn.Close()
+
+			asDeviceQueueService := asAPI.NewDeviceServiceClient(conn)
 			{
 				_, err := asDeviceQueueService.FlushQueue(ctx, &asAPI.FlushDeviceQueueRequest{
 					DevEui: devEUI,
