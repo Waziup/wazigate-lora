@@ -258,13 +258,13 @@ func Serve() error {
 			}
 			log.Printf("Waziup Device \"%s\" -> ChirpStack DevEUI \"%016X\"", devID, devEUIInt64)
 
-			_, err := wazigate.MarshalDevice(devID)
+			data, err := wazigate.MarshalDevice(devID)
 			if err != nil {
 				log.Printf("Err Can marshal device: %v", err)
 				continue
 			}
-			log.Printf("  Payload: [%d] %v", len(msg.Data), msg.Data)
-			base64Data := base64.StdEncoding.EncodeToString([]byte(msg.Data))
+			log.Printf("  Payload: [%d] %v", len(data), data)
+			base64Data := base64.StdEncoding.EncodeToString(data)
 			log.Printf("  Base64: [%d] %s", len(base64Data), base64Data)
 
 			devEUI := fmt.Sprintf("%016X", devEUIInt64)
@@ -291,7 +291,7 @@ func Serve() error {
 					QueueItem: &asAPI.DeviceQueueItem{
 						DevEui: devEUI,
 						FPort:  100,
-						Data:   msg.Data,
+						Data:   data,
 					},
 				})
 				if err != nil {
