@@ -1,5 +1,5 @@
-FROM golang:buster AS development
-# We need to use Buster as Alpine removed `qsort` lib that is used by the forwarder
+FROM golang:trixie AS development
+# We need to use Trixie as Alpine removed `qsort` lib that is used by the forwarder
 
 WORKDIR /opt/waziup
 
