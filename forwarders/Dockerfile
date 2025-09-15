@@ -27,7 +27,7 @@ RUN git clone https://github.com/Lora-net/picoGW_hal.git \
 
 #--------------------------------#
 
-FROM debian:buster-slim AS production
+FROM debian:trixie-slim AS production
 
 RUN apt-get update \
     && apt-get install -y curl
