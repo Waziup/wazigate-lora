@@ -1,5 +1,5 @@
-FROM golang:buster AS development
-# We need to use Buster as Alpine removed `qsort` lib that is used by the forwarder
+FROM golang:trixie AS development
+# We need to use Trixie as Alpine removed `qsort` lib that is used by the forwarder
 
 WORKDIR /opt/waziup
 
@@ -27,7 +27,7 @@ RUN git clone https://github.com/Lora-net/picoGW_hal.git \
 
 #--------------------------------#
 
-FROM debian:buster-slim AS production
+FROM debian:trixie-slim AS production
 
 RUN apt-get update \
     && apt-get install -y curl
