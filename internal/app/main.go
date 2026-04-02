@@ -258,7 +258,7 @@ func Serve() error {
 			}
 			log.Printf("Waziup Device \"%s\" -> ChirpStack DevEUI \"%016X\"", devID, devEUIInt64)
 
-			data, err := wazigate.MarshalDevice(devID)
+			_, err := wazigate.MarshalDevice(devID)
 			if err != nil {
 				log.Printf("Err Can marshal device: %v", err)
 				continue
