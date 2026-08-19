@@ -4,13 +4,15 @@ WORKDIR /root/
 
 # Install dependencies
 COPY go.mod go.sum ./
-RUN go mod download
+RUN --mount=type=cache,target=/go/pkg/mod go mod download
 
 # Build the binary
 COPY internal internal
 COPY cmd cmd
 ENV CGO_ENABLED=0
-RUN go build -a -installsuffix cgo -ldflags "-s -w" -buildvcs=false -o wazigate-lora ./cmd/wazigate-lora
+RUN --mount=type=cache,target=/go/pkg/mod \
+    --mount=type=cache,target=/root/.cache/go-build \
+    go build -ldflags "-s -w" -buildvcs=false -o wazigate-lora ./cmd/wazigate-lora
 
 #
 
