@@ -1,4 +1,4 @@
-FROM golang AS golang
+FROM golang:1.26.6 AS golang
 
 WORKDIR /root/
 
