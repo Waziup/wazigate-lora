@@ -1,7 +1,13 @@
-FROM golang:trixie AS development
-# We need to use Trixie as Alpine removed `qsort` lib that is used by the forwarder
+FROM golang:1.26.6-trixie AS development
+# We need to use Trixie as Alpine removed `qsort` lib that is used by the forwarder.
+# Pinned: this image's C binaries are copied into debian:trixie-slim below, so the
+# glibc must match, and a floating tag silently moved the Go toolchain mid-build.
 
 WORKDIR /opt/waziup
+
+# Go's signal-based async preemption (SIGURG) can livelock under qemu-user,
+# pinning one core at 100% instead of compiling. See ../Dockerfile.
+ENV GODEBUG=asyncpreemptoff=1
 
 # Building the multi chan packet forwarder for RAK2245
 RUN git clone https://github.com/Lora-net/lora_gateway \

@@ -10,6 +10,10 @@ RUN --mount=type=cache,target=/go/pkg/mod go mod download
 COPY internal internal
 COPY cmd cmd
 ENV CGO_ENABLED=0
+# Go's signal-based async preemption (SIGURG) can livelock under qemu-user: the
+# build pins one core at 100% indefinitely instead of compiling. Costs nothing on
+# a healthy toolchain and removes the failure mode under emulation.
+ENV GODEBUG=asyncpreemptoff=1
 RUN --mount=type=cache,target=/go/pkg/mod \
     --mount=type=cache,target=/root/.cache/go-build \
     go build -ldflags "-s -w" -buildvcs=false -o wazigate-lora ./cmd/wazigate-lora
